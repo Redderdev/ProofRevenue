@@ -94,6 +94,47 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    // Stripe connections table (stores encrypted OAuth tokens)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stripe_connections (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        stripe_user_id VARCHAR(255) NOT NULL UNIQUE,
+        access_token_encrypted BYTEA NOT NULL,
+        access_token_iv VARCHAR(32) NOT NULL,
+        refresh_token_encrypted BYTEA,
+        refresh_token_iv VARCHAR(32),
+        livemode BOOLEAN DEFAULT FALSE,
+        scope VARCHAR(255),
+        connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_token_refresh TIMESTAMP,
+        expires_at TIMESTAMP,
+        revoked_at TIMESTAMP,
+        mrr BIGINT DEFAULT 0,
+        arr BIGINT DEFAULT 0,
+        active_customers INTEGER DEFAULT 0,
+        last_metrics_fetch TIMESTAMP,
+        metrics_fetch_error VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Revenue snapshots table (historical MRR/ARR data)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS revenue_snapshots (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        stripe_connection_id UUID NOT NULL REFERENCES stripe_connections(id) ON DELETE CASCADE,
+        mrr BIGINT NOT NULL,
+        arr BIGINT NOT NULL,
+        active_customers INTEGER NOT NULL,
+        snapshot_date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, snapshot_date)
+      );
+    `);
+
     // Indexes
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -103,6 +144,10 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_stripe_events_type ON stripe_events(type);
       CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
       CREATE INDEX IF NOT EXISTS idx_auth_tokens_expires_at ON auth_tokens(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_stripe_connections_user_id ON stripe_connections(user_id);
+      CREATE INDEX IF NOT EXISTS idx_stripe_connections_stripe_user_id ON stripe_connections(stripe_user_id);
+      CREATE INDEX IF NOT EXISTS idx_revenue_snapshots_user_id ON revenue_snapshots(user_id);
+      CREATE INDEX IF NOT EXISTS idx_revenue_snapshots_date ON revenue_snapshots(snapshot_date);
     `);
 
     await client.query('COMMIT');

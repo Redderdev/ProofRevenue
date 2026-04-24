@@ -9,12 +9,14 @@ import clsx from 'clsx';
 
 interface DashboardProps {
   state?: string;
+  activeNav?: 'dashboard' | 'certificate' | 'settings';
   onNav?: (screen: string) => void;
   onAction?: (action: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   state = 'unconnected',
+  activeNav = 'dashboard',
   onNav,
   onAction,
 }) => {
@@ -35,7 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onClick={() => onNav?.(item.id)}
                 className={clsx(
                   'px-2.5 py-1.5 rounded text-xs font-medium transition-colors',
-                  state === item.id
+                  activeNav === item.id
                     ? 'text-ink-900 bg-white bg-opacity-40'
                     : 'text-ink-400 hover:text-ink-900'
                 )}
@@ -235,7 +237,7 @@ const StatePaymentPending: React.FC = () => (
     </div>
     <h2 className="font-serif text-2xl letter-spacing-tight mb-2">Payment in progress…</h2>
     <p className="text-sm text-ink-600 max-w-lg mx-auto mb-6">
-      We're waiting on Stripe to confirm your payment. This page updates automatically.
+      We&apos;re waiting on Stripe to confirm your payment. This page updates automatically.
     </p>
     <div className="font-mono text-xs text-ink-400">
       SESSION cs_live_b1NxK···fQW4 · AMOUNT €14.99

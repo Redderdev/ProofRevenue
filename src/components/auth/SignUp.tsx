@@ -102,7 +102,6 @@ export function SignUp({ onSuccess, onSwitchToLogin }: SignUpProps) {
       // Show success message then switch to login
       setTimeout(() => {
         onSuccess?.();
-        onSwitchToLogin?.();
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'An error occurred');

@@ -90,7 +90,7 @@ export const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onComplete, onNa
           <p className="text-sm text-ink-600 mt-3.5 max-w-xl mx-auto leading-relaxed">
             {phase === 'ready'
               ? 'We just wrote the first snapshot from Stripe. Your public link is ready to share.'
-              : 'Payment confirmed. We're pulling your first revenue snapshot from Stripe.'}
+              : 'Payment confirmed. We&apos;re pulling your first revenue snapshot from Stripe.'}
           </p>
         </div>
 

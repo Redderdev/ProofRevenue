@@ -87,7 +87,7 @@ export const StripeOAuth: React.FC<StripeOAuthProps> = ({ onComplete, onCancel }
               </div>
               <h3 className="text-xl font-medium mb-1.5">Choose a Stripe account</h3>
               <p className="text-sm text-ink-600 mb-4.5">
-                You'll grant read-only access to revenue data for the account you pick.
+                You&apos;ll grant read-only access to revenue data for the account you pick.
               </p>
 
               {[

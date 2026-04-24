@@ -134,7 +134,7 @@ export function SignIn({ onSuccess, onSwitchToSignUp }: SignInProps) {
         {/* Switch to Sign Up */}
         <div className="mt-6 text-center">
           <p className="text-ink-600 text-sm">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <button
               onClick={onSwitchToSignUp}
               className="text-emerald font-medium hover:underline disabled:opacity-50"

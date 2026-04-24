@@ -1,7 +1,7 @@
 // POST /api/auth/signup - Create new user account
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser, validatePasswordStrength } from '@/lib/auth';
-import { mockCreateUser, mockValidatePasswordStrength } from '@/lib/auth-mock';
+import { mockCreateUser } from '@/lib/auth-mock';
 
 // Input validation
 interface SignupRequest {
