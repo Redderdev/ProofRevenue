@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ProofRevenue — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--font-sans, system-ui); }
+  #root { width: 100%; height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="lib/icons.jsx"></script>
+<script type="text/babel" src="lib/ui.jsx"></script>
+<script type="text/babel" src="screens/landing.jsx"></script>
+<script type="text/babel" src="screens/dashboard.jsx"></script>
+<script type="text/babel" src="screens/flow.jsx"></script>
+<script type="text/babel" src="screens/certificate.jsx"></script>
+<script type="text/babel" src="screens/settings-admin.jsx"></script>
+<script type="text/babel" src="screens/embeds.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+/* App — wraps all artboards in a design canvas, plus a single "prototype" artboard
+   that drives the full journey with working state. */
+
+const TWEAKS = /*EDITMODE-BEGIN*/{
+  "accent": "emerald",
+  "typePair": "inter+instrument",
+  "revenueScale": "scaleup",
+  "dashboardState": "certificate_active"
+}/*EDITMODE-END*/;
+
+const accentMap = {
+  emerald: { e: "oklch(0.62 0.14 158)", soft: "oklch(0.92 0.06 158)", ink: "oklch(0.34 0.08 158)" },
+  cobalt:  { e: "oklch(0.55 0.17 245)", soft: "oklch(0.93 0.05 245)", ink: "oklch(0.34 0.12 245)" },
+  citrus:  { e: "oklch(0.72 0.16 95)",  soft: "oklch(0.94 0.08 95)",  ink: "oklch(0.38 0.10 95)"  },
+};
+const scaleMap = {
+  startup:   { mrr: 4820, arr: 57840, totalRevenue: 96300, customers: 72, mrrHistory: [820,1120,1400,1830,2200,2800,3100,3540,3920,4150,4560,4820], arrHistory: [9840,13440,16800,21960,26400,33600,37200,42480,47040,49800,54720,57840] },
+  scaleup:   { mrr: 48720, arr: 584640, totalRevenue: 1247300, customers: 1284, mrrHistory: [18200,21900,24300,27800,31200,34600,38100,41900,44800,46500,47200,48720], arrHistory: [218400,262800,291600,333600,374400,415200,457200,502800,537600,558000,566400,584640] },
+  growth:    { mrr: 312400, arr: 3748800, totalRevenue: 9840000, customers: 9412, mrrHistory: [120000,142000,168000,190000,215000,236000,256000,275000,291000,301000,308000,312400], arrHistory: [1440000,1704000,2016000,2280000,2580000,2832000,3072000,3300000,3492000,3612000,3696000,3748800] },
+};
+const typePairMap = {
+  "inter+instrument": { sans: '"Inter", system-ui, sans-serif', serif: '"Instrument Serif", Georgia, serif', mono: '"JetBrains Mono", monospace' },
+  "inter+playfair":   { sans: '"Inter", system-ui, sans-serif', serif: '"Playfair Display", Georgia, serif', mono: '"JetBrains Mono", monospace' },
+  "sans-only":        { sans: '"Inter", system-ui, sans-serif', serif: '"Inter", system-ui, sans-serif', mono: '"JetBrains Mono", monospace' },
+};
+
+function applyTweaks(t) {
+  const a = accentMap[t.accent] || accentMap.emerald;
+  const s = scaleMap[t.revenueScale] || scaleMap.scaleup;
+  const f = typePairMap[t.typePair] || typePairMap["inter+instrument"];
+  const r = document.documentElement;
+  r.style.setProperty("--emerald", a.e);
+  r.style.setProperty("--emerald-soft", a.soft);
+  r.style.setProperty("--emerald-ink", a.ink);
+  r.style.setProperty("--font-sans", f.sans);
+  r.style.setProperty("--font-serif", f.serif);
+  r.style.setProperty("--font-mono", f.mono);
+  Object.assign(window.CALIAI, s);
+}
+
+// Prototype shell — runs the real flow inside a frame, driven by state
+function PrototypeFlow({ initialState }) {
+  const [screen, setScreen] = React.useState("landing"); // landing | oauth | dashboard | checkout | success | certificate | settings | admin
+  const [dashState, setDashState] = React.useState("unconnected");
+
+  React.useEffect(() => {
+    if (initialState) {
+      setScreen("dashboard");
+      setDashState(initialState);
+    }
+  }, [initialState]);
+
+  const handleAction = (a) => {
+    if (a === "connect") setScreen("oauth");
+    if (a === "pay") setScreen("checkout");
+    if (a === "view-cert") setScreen("certificate");
+  };
+  const handleNav = (n) => {
+    if (n === "dashboard") setScreen("dashboard");
+    if (n === "certificate") setScreen("certificate");
+    if (n === "settings") setScreen("settings");
+  };
+
+  if (screen === "landing")   return <Landing onStart={() => setScreen("oauth")}/>;
+  if (screen === "oauth")     return <StripeOAuth onComplete={() => { setDashState("stripe_connected"); setScreen("dashboard"); }} onCancel={() => setScreen("landing")}/>;
+  if (screen === "checkout")  return <Checkout onComplete={() => { setDashState("data_pending"); setScreen("success"); }} onCancel={() => setScreen("dashboard")}/>;
+  if (screen === "success")   return <PaymentSuccess onComplete={() => { setDashState("certificate_active"); setScreen("dashboard"); }} onNav={handleNav}/>;
+  if (screen === "certificate") return <CertificatePage onNav={handleNav} revoked={dashState === "stripe_revoked_after_payment"}/>;
+  if (screen === "settings")  return <Settings onNav={handleNav}/>;
+  if (screen === "admin")     return <AdminAudit onNav={handleNav}/>;
+  return <Dashboard state={dashState} onNav={handleNav} onAction={handleAction}/>;
+}
+
+// Tweaks panel
+function TweaksPanel({ tweaks, setTweaks, show, onFlowJump }) {
+  if (!show) return null;
+  const row = (label, id, options) => (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8A93A8", fontFamily: "var(--font-mono)", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {options.map(o => (
+          <button key={o.v} onClick={() => {
+            const next = { ...tweaks, [id]: o.v };
+            setTweaks(next);
+            window.parent?.postMessage({ type: "__edit_mode_set_keys", edits: { [id]: o.v } }, "*");
+          }} style={{
+            padding: "5px 10px", borderRadius: 4, fontSize: 11, fontFamily: "var(--font-sans)",
+            border: "1px solid " + (tweaks[id] === o.v ? "#0B1220" : "#DEDAD0"),
+            background: tweaks[id] === o.v ? "#0B1220" : "#FFFCF5",
+            color: tweaks[id] === o.v ? "#F6F4EE" : "#5B6478",
+            cursor: "pointer",
+          }}>{o.l}</button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div style={{
+      position: "fixed", bottom: 20, right: 20, width: 280, padding: 16,
+      background: "#FFFCF5", border: "1px solid #DEDAD0", borderRadius: 10,
+      boxShadow: "0 20px 40px -10px rgba(0,0,0,0.25)", zIndex: 99999,
+      fontFamily: 'var(--font-sans)',
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em" }}>Tweaks</div>
+        <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "#8A93A8", letterSpacing: "0.1em" }}>LIVE</span>
+      </div>
+      {row("Accent", "accent", [
+        { v: "emerald", l: "Emerald" }, { v: "cobalt", l: "Cobalt" }, { v: "citrus", l: "Citrus" },
+      ])}
+      {row("Type pair", "typePair", [
+        { v: "inter+instrument", l: "Inter + Instrument" },
+        { v: "inter+playfair", l: "Inter + Playfair" },
+        { v: "sans-only", l: "Sans only" },
+      ])}
+      {row("Revenue scale", "revenueScale", [
+        { v: "startup", l: "€5k MRR" }, { v: "scaleup", l: "€49k" }, { v: "growth", l: "€312k" },
+      ])}
+      <div style={{ height: 1, background: "#DEDAD0", margin: "4px 0 12px" }}/>
+      <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8A93A8", fontFamily: "var(--font-mono)", marginBottom: 6 }}>Jump to state</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+        {[
+          ["unconnected", "Unconnected"],
+          ["stripe_connected", "Connected"],
+          ["stripe_revoked_before_payment", "Revoked (pre)"],
+          ["payment_pending", "Pay pending"],
+          ["data_pending", "Data pending"],
+          ["certificate_active", "Active"],
+          ["stripe_revoked_after_payment", "Revoked (post)"],
+        ].map(([v, l]) => (
+          <button key={v} onClick={() => onFlowJump(v)} style={{
+            padding: "5px 8px", borderRadius: 4, fontSize: 11, fontFamily: "var(--font-sans)",
+            border: "1px solid #DEDAD0", background: "#FFFCF5", color: "#0B1220",
+            cursor: "pointer", textAlign: "left",
+          }}>{l}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Scaled artboard — lets us show full-sized screens at a reduced size in the canvas
+function Scaled({ w, h, targetW, targetH, children }) {
+  const sx = targetW / w;
+  const sy = targetH / h;
+  const s = Math.min(sx, sy);
+  return (
+    <div style={{ width: targetW, height: targetH, overflow: "hidden", position: "relative", background: "var(--paper)", borderRadius: 2 }}>
+      <div style={{ width: w, height: h, transform: `scale(${s})`, transformOrigin: "top left" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [tweaks, setTweaks] = React.useState(TWEAKS);
+  const [editMode, setEditMode] = React.useState(false);
+  const [protoJump, setProtoJump] = React.useState(null);
+  const protoRef = React.useRef(null);
+
+  React.useEffect(() => { applyTweaks(tweaks); }, [tweaks]);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (!e.data) return;
+      if (e.data.type === "__activate_edit_mode") setEditMode(true);
+      if (e.data.type === "__deactivate_edit_mode") setEditMode(false);
+    };
+    window.addEventListener("message", handler);
+    // announce after listener registered
+    window.parent?.postMessage({ type: "__edit_mode_available" }, "*");
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // Target sizes for canvas artboards
+  const A_W = 1200, A_H = 780;
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="prototype" title="Full prototype" subtitle="Click through — landing → connect → pay → verify → share. State jumps via Tweaks.">
+          <DCArtboard id="flow" label="Interactive · full journey" width={1440} height={900}>
+            <PrototypeFlow initialState={protoJump}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="states" title="Dashboard · all 7 states" subtitle="Every state in the state machine has an explicit render. Never a fallback.">
+          <DCArtboard id="s1" label="1 · unconnected" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="unconnected"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s2" label="2 · stripe_connected" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="stripe_connected"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s3" label="3 · revoked_before_payment" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="stripe_revoked_before_payment"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s4" label="4 · payment_pending" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="payment_pending"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s5" label="5 · data_pending" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="data_pending"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s6" label="6 · certificate_active" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="certificate_active"/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="s7" label="7 · revoked_after_payment" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Dashboard state="stripe_revoked_after_payment"/></Scaled>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="cert" title="Public certificate · /c/[certificateId]" subtitle="The shareable artifact. Dark verified-badge feel, editorial numerics.">
+          <DCArtboard id="cert-live" label="Live — caliAi" width={1200} height={900}>
+            <Scaled w={1440} h={1100} targetW={1200} targetH={900}><CertificatePage/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="cert-revoked" label="Re-verification banner" width={1200} height={900}>
+            <Scaled w={1440} h={1100} targetW={1200} targetH={900}><CertificatePage revoked={true}/></Scaled>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="flows" title="Flow screens" subtitle="Mocked Stripe OAuth, Checkout, and the dataStatus-aware success page.">
+          <DCArtboard id="oauth" label="Stripe Connect OAuth (mock)" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><StripeOAuth/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="checkout" label="Stripe Checkout (mock)" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><Checkout/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="success" label="/payment/success — polling" width={1200} height={780}>
+            <Scaled w={1440} h={900} targetW={1200} targetH={780}><PaymentSuccess/></Scaled>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="landing" title="Landing & marketing" subtitle="Editorial headline, trust-first, one clear CTA.">
+          <DCArtboard id="landing-1" label="Hero + how it works" width={1200} height={1400}>
+            <Scaled w={1440} h={1680} targetW={1200} targetH={1400}><Landing/></Scaled>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="share" title="Share surface · badge + OG" subtitle="What actually turns each customer into distribution.">
+          <DCArtboard id="embed" label="Embed panel · 3 sizes, 2 tones" width={1200} height={1000}>
+            <Scaled w={1440} h={1200} targetW={1200} targetH={1000}><EmbedCopy/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="og" label="OG preview · X + LinkedIn" width={1200} height={1000}>
+            <Scaled w={1440} h={1200} targetW={1200} targetH={1000}><OGPreview/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="og-raw" label="OG card · 1200×630 raw" width={1200} height={630}>
+            <OGCard/>
+          </DCArtboard>
+          <DCArtboard id="badge-stamp-dark" label="Badge · stamp (dark)" width={280} height={280}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", background: "#FBF9F3" }}>
+              <BadgeStamp dark={true}/>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="badge-card-dark" label="Badge · card (dark)" width={400} height={200}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", background: "#FBF9F3" }}>
+              <BadgeCard dark={true}/>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="badge-pill-light" label="Badge · pill (light)" width={320} height={120}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", background: "#FBF9F3" }}>
+              <BadgePill dark={false}/>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="ops" title="Settings & admin" subtitle="Owner-facing controls + admin audit log (RBAC, 2FA gated).">
+          <DCArtboard id="settings" label="Settings" width={1200} height={900}>
+            <Scaled w={1440} h={1080} targetW={1200} targetH={900}><Settings/></Scaled>
+          </DCArtboard>
+          <DCArtboard id="admin" label="Admin · audit log" width={1200} height={900}>
+            <Scaled w={1440} h={1080} targetW={1200} targetH={900}><AdminAudit/></Scaled>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} show={editMode} onFlowJump={(s) => setProtoJump(s)}/>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

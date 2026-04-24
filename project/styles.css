@@ -1,0 +1,192 @@
+/* ProofRevenue — design tokens + base styles */
+
+:root {
+  --ink-950: #0A0F1C;
+  --ink-900: #0B1220;
+  --ink-800: #141B2E;
+  --ink-700: #1F2740;
+  --ink-600: #2B3552;
+  --ink-400: #5B6478;
+  --ink-300: #8A93A8;
+  --ink-200: #C7CBD6;
+  --ink-100: #E6E4DD;
+  --paper: #F6F4EE;
+  --paper-alt: #EFEDE5;
+  --paper-dim: #E6E3D8;
+  --line: #DEDAD0;
+  --line-strong: #C9C4B6;
+  /* verified emerald, shared chroma */
+  --emerald: oklch(0.62 0.14 158);
+  --emerald-soft: oklch(0.92 0.06 158);
+  --emerald-ink: oklch(0.34 0.08 158);
+  --amber: oklch(0.72 0.14 75);
+  --amber-soft: oklch(0.94 0.06 75);
+  --ruby: oklch(0.58 0.17 25);
+  --ruby-soft: oklch(0.94 0.05 25);
+
+  --font-sans: "Inter", "Inter Display", ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  --font-serif: "Instrument Serif", "Source Serif Pro", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+.pr-root {
+  font-family: var(--font-sans);
+  color: var(--ink-900);
+  background: var(--paper);
+  font-feature-settings: "ss01", "cv11", "tnum";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Typography utility set */
+.pr-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+  font-weight: 500;
+}
+.pr-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+}
+.pr-mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+.pr-serif { font-family: var(--font-serif); font-feature-settings: "ss01"; }
+
+/* Buttons */
+.pr-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+  padding: 10px 16px; border-radius: 6px; border: 1px solid transparent;
+  cursor: pointer; transition: all 120ms ease; letter-spacing: -0.005em;
+  line-height: 1;
+}
+.pr-btn-primary { background: var(--ink-900); color: var(--paper); }
+.pr-btn-primary:hover { background: var(--ink-800); }
+.pr-btn-ghost { background: transparent; color: var(--ink-900); border-color: var(--line-strong); }
+.pr-btn-ghost:hover { background: var(--paper-alt); }
+.pr-btn-emerald {
+  background: var(--emerald); color: white;
+}
+.pr-btn-emerald:hover { filter: brightness(0.95); }
+.pr-btn-sm { padding: 7px 12px; font-size: 13px; border-radius: 5px; }
+.pr-btn-lg { padding: 14px 22px; font-size: 15px; border-radius: 7px; }
+
+/* Cards */
+.pr-card {
+  background: #FFFCF5;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+/* Status pills */
+.pr-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.pr-pill-neutral { background: var(--ink-100); color: var(--ink-600); }
+.pr-pill-emerald { background: var(--emerald-soft); color: var(--emerald-ink); }
+.pr-pill-amber { background: var(--amber-soft); color: oklch(0.34 0.08 75); }
+.pr-pill-ruby { background: var(--ruby-soft); color: oklch(0.38 0.13 25); }
+.pr-pill-dark { background: var(--ink-900); color: var(--paper); }
+
+.pr-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.pr-dot-pulse {
+  position: relative;
+}
+.pr-dot-pulse::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  border: 1.5px solid currentColor; animation: pr-pulse 1.6s ease-out infinite;
+}
+@keyframes pr-pulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Hairline inputs */
+.pr-input {
+  font-family: var(--font-sans); font-size: 14px;
+  background: #FFFCF5; border: 1px solid var(--line);
+  border-radius: 6px; padding: 10px 12px; width: 100%;
+  color: var(--ink-900); outline: none; transition: border-color 120ms;
+}
+.pr-input:focus { border-color: var(--ink-700); }
+
+/* Divider */
+.pr-hair { height: 1px; background: var(--line); }
+.pr-hair-dark { height: 1px; background: rgba(255,255,255,0.08); }
+
+/* Striped placeholder */
+.pr-placeholder {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(11,18,32,0.04) 0 8px,
+      rgba(11,18,32,0.00) 8px 16px
+    ),
+    var(--paper-alt);
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-400);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Dark surfaces (cert & hero) */
+.pr-dark {
+  background: var(--ink-900); color: var(--paper);
+}
+.pr-dark .pr-kicker,
+.pr-dark .pr-eyebrow { color: var(--ink-300); }
+
+/* Focus-ring for buttons */
+.pr-btn:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+
+/* Small badges */
+.pr-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 2px 6px; font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.04em; color: var(--ink-400); background: transparent;
+}
+
+/* Scrollbar hiding inside artboards */
+.pr-scroll { overflow: auto; scrollbar-width: none; }
+.pr-scroll::-webkit-scrollbar { display: none; }
+
+/* Tables */
+.pr-table { width: 100%; border-collapse: collapse; }
+.pr-table th, .pr-table td {
+  text-align: left; padding: 10px 12px; font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.pr-table th {
+  font-family: var(--font-mono); font-weight: 500; font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-400);
+}
+
+/* Checkmark icon rotation on tick */
+@keyframes pr-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pr-pop { animation: pr-pop 360ms cubic-bezier(.2,.7,.3,1); }
+
+/* subtle paper grain on certificate bg */
+.pr-grain {
+  background-image:
+    radial-gradient(rgba(11,18,32,0.035) 1px, transparent 1px);
+  background-size: 6px 6px;
+}

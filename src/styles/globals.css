@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+* {
+  @apply box-border;
+}
+
+html,
+body {
+  @apply m-0 p-0;
+}
+
+:root {
+  --ink-950: #0a0f1c;
+  --ink-900: #0b1220;
+  --ink-800: #141b2e;
+  --ink-700: #1f2740;
+  --ink-600: #2b3552;
+  --ink-400: #5b6478;
+  --ink-300: #8a93a8;
+  --ink-200: #c7cbd6;
+  --ink-100: #e6e4dd;
+  --paper: #f6f4ee;
+  --paper-alt: #efede5;
+  --paper-dim: #e6e3d8;
+  --line: #dedad0;
+  --line-strong: #c9c4b6;
+  --emerald: oklch(0.62 0.14 158);
+  --emerald-soft: oklch(0.92 0.06 158);
+  --emerald-ink: oklch(0.34 0.08 158);
+  --amber: oklch(0.72 0.14 75);
+  --amber-soft: oklch(0.94 0.06 75);
+  --ruby: oklch(0.58 0.17 25);
+  --ruby-soft: oklch(0.94 0.05 25);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink-900);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* Utility classes */
+.letter-spacing-tight {
+  letter-spacing: -0.01em;
+}
+
+.letter-spacing-normal {
+  letter-spacing: 0em;
+}
+
+.letter-spacing-wide {
+  letter-spacing: 0.05em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum';
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+  font-feature-settings: 'ss01';
+}
+
+/* Responsive utility classes */
+@media (max-width: 640px) {
+  .sm\:hidden {
+    display: none;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--emerald);
+  outline-offset: 2px;
+}
+
+button:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--emerald);
+  color: white;
+}
