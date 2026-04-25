@@ -3,8 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
-import { Logo, Card, Sparkline } from '@/components/Common';
-import { Pill } from '@/components/Badge';
+import { Logo } from '@/components/Common';
 import { useAuth } from '@/lib/AuthContext';
 
 interface LandingProps {

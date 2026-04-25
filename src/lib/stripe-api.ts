@@ -44,7 +44,7 @@ const getStripeClient = async (userId: string): Promise<{ client: Stripe; stripe
 
     const connection = result.rows[0];
     const accessToken = decryptToken(
-      connection.access_token_encrypted.toString('hex'),
+      connection.access_token_encrypted.toString('utf8'),
       connection.access_token_iv
     );
 
@@ -79,7 +79,7 @@ export const getRevenueMetrics = async (userId: string): Promise<RevenueMetrics 
       return null;
     }
 
-    const { client: stripe, stripeUserId } = stripeData;
+    const { client: stripe } = stripeData;
     const metrics: RevenueMetrics = {
       mrr: 0,
       arr: 0,
@@ -98,16 +98,11 @@ export const getRevenueMetrics = async (userId: string): Promise<RevenueMetrics 
       let startingAfter: string | undefined;
 
       while (hasMore) {
-        const subscriptions = await stripe.subscriptions.list(
-          {
-            status: 'active',
-            limit: 100,
-            ...(startingAfter && { starting_after: startingAfter }),
-          },
-          {
-            stripeAccount: stripeUserId, // Authenticate as connected account
-          } as any
-        );
+        const subscriptions = await stripe.subscriptions.list({
+          status: 'active',
+          limit: 100,
+          ...(startingAfter && { starting_after: startingAfter }),
+        });
 
         if (subscriptions.data.length === 0) {
           hasMore = false;
@@ -136,12 +131,9 @@ export const getRevenueMetrics = async (userId: string): Promise<RevenueMetrics 
                         ? ((item.price?.unit_amount || 0) * 365) / 12
                         : 0;
 
-              totalMrr += monthlyAmount * (subscription.quantity || 1);
+              totalMrr += monthlyAmount * (item.quantity || 1);
             }
           }
-
-          // Add one-time charges
-          metrics.totalRevenue += subscription.total_billing_cycle_sequence || 0;
         }
 
         // Check for more results

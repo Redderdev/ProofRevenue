@@ -160,9 +160,9 @@ export async function GET(request: NextRequest) {
          WHERE user_id = $1`,
         [
           userId,
-          Buffer.from(accessTokenEncrypted, 'hex'),
+          Buffer.from(accessTokenEncrypted, 'utf8'),
           accessTokenIv,
-          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'hex') : null,
+          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'utf8') : null,
           refreshTokenData ? refreshTokenData.iv : null,
           tokenResponse.livemode,
           tokenResponse.scope,
@@ -185,9 +185,9 @@ export async function GET(request: NextRequest) {
         [
           userId,
           tokenResponse.stripe_user_id,
-          Buffer.from(accessTokenEncrypted, 'hex'),
+          Buffer.from(accessTokenEncrypted, 'utf8'),
           accessTokenIv,
-          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'hex') : null,
+          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'utf8') : null,
           refreshTokenData ? refreshTokenData.iv : null,
           tokenResponse.livemode,
           tokenResponse.scope,

@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Logo, Sparkline } from '@/components/Common';
-import { Pill } from '@/components/Badge';
 import { eur, num } from '@/lib/utils';
 
 interface CertificatePageProps {
@@ -12,7 +11,7 @@ interface CertificatePageProps {
   onNav?: (screen: string) => void;
 }
 
-export const CertificatePage: React.FC<CertificatePageProps> = ({ revoked = false, onNav }) => {
+export const CertificatePage: React.FC<CertificatePageProps> = ({ revoked = false }) => {
   const [copied, setCopied] = useState(false);
 
   const mockData = {

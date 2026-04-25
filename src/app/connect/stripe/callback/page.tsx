@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import { useAuth } from '@/lib/AuthContext';
 
+export const dynamic = 'force-dynamic';
+
 type CallbackState = 'loading' | 'success' | 'error' | 'redirecting';
 
-export default function StripeConnectCallbackPage() {
+function StripeConnectCallbackPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, refresh } = useAuth();
@@ -115,5 +117,13 @@ export default function StripeConnectCallbackPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function StripeConnectCallbackPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-paper" />}>
+      <StripeConnectCallbackPageContent />
+    </Suspense>
   );
 }

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Logo, Card } from '@/components/Common';
-import { Pill } from '@/components/Badge';
 
 interface PaymentSuccessProps {
   onComplete?: () => void;

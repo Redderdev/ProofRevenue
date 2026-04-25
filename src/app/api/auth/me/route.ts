@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getUserById } from '@/lib/auth';
 import { mockVerifyToken, mockGetUserById } from '@/lib/auth-mock';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/auth/me
  * Security:

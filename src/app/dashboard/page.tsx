@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dashboard } from '@/components/screens/Dashboard';
+
+export const dynamic = 'force-dynamic';
 
 type DashboardState =
   | 'unconnected'
@@ -30,7 +32,7 @@ function getDashboardState(param: string | null): DashboardState {
   return 'unconnected';
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const state = getDashboardState(searchParams.get('state'));
@@ -64,5 +66,13 @@ export default function DashboardPage() {
       onAction={handleAction}
       onNav={handleNav}
     />
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-paper" />}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

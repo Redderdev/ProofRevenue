@@ -1,6 +1,5 @@
 import React from 'react';
 import clsx from 'clsx';
-import { Icon } from './Icon';
 
 interface PillProps {
   tone?: 'neutral' | 'emerald' | 'amber' | 'ruby' | 'dark';

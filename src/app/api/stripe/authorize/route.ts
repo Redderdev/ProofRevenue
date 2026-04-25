@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateOAuthState, getStripeOAuthUrl, logOAuthEvent } from '@/lib/stripe-oauth';
 import { jwtVerify } from 'jose';
 
+export const dynamic = 'force-dynamic';
+
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev_secret');
 
 export async function GET(request: NextRequest) {

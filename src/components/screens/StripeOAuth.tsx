@@ -14,10 +14,12 @@ export const StripeOAuth: React.FC<StripeOAuthProps> = ({ onComplete, onCancel }
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    if (step === 2) {
-      const timer = setTimeout(() => setStep(3), 1200);
-      return () => clearTimeout(timer);
+    if (step !== 2) {
+      return;
     }
+
+    const timer = setTimeout(() => setStep(3), 1200);
+    return () => clearTimeout(timer);
   }, [step]);
 
   return (

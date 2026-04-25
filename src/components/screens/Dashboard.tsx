@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
-import { Logo, Card, Metric, Sparkline, Input } from '@/components/Common';
+import { Logo, Card, Metric, Sparkline } from '@/components/Common';
 import { Pill, StateBadge } from '@/components/Badge';
 import clsx from 'clsx';
 

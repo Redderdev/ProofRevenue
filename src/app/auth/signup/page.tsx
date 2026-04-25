@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SignUp } from '@/components/auth/SignUp';
 import { useAuth } from '@/lib/AuthContext';
+
+export const dynamic = 'force-dynamic';
 
 function sanitizeNextPath(path: string | null): string {
   if (!path || !path.startsWith('/')) {
@@ -17,7 +19,7 @@ function sanitizeNextPath(path: string | null): string {
   return path;
 }
 
-export default function SignUpPage() {
+function SignUpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
@@ -45,5 +47,13 @@ export default function SignUpPage() {
         }
       />
     </main>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-paper" />}>
+      <SignUpPageContent />
+    </Suspense>
   );
 }
