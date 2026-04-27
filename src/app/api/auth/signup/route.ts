@@ -82,9 +82,26 @@ export async function POST(request: NextRequest) {
       );
     } catch (dbError: any) {
       if (!ALLOW_MOCK_FALLBACK) {
-        console.error('Database unavailable during signup:', dbError.message);
+        console.error('Database unavailable during signup:', {
+          code: dbError?.code,
+          message: dbError?.message,
+        });
+
+        if (dbError?.code === '42P01') {
+          return NextResponse.json(
+            {
+              error: 'Database schema is not initialized.',
+              code: 'DB_SCHEMA_MISSING',
+            },
+            { status: 503 }
+          );
+        }
+
         return NextResponse.json(
-          { error: 'Database unavailable. Please try again shortly.' },
+          {
+            error: 'Database unavailable. Please try again shortly.',
+            code: 'DB_UNAVAILABLE',
+          },
           { status: 503 }
         );
       }

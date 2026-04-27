@@ -274,15 +274,15 @@ const MiniCertPreview: React.FC = () => {
       <div className="grid grid-cols-2 gap-0 border border-white border-opacity-10 rounded-lg">
         <div className="px-4 py-4 border-r border-b border-white border-opacity-10">
           <div className="font-mono text-xs text-ink-300 letter-spacing-normal">MRR</div>
-          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.mrr.toLocaleString()}</div>
+          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.mrr.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4 border-b border-white border-opacity-10">
           <div className="font-mono text-xs text-ink-300 letter-spacing-normal">ARR</div>
-          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.arr.toLocaleString()}</div>
+          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.arr.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4 border-r border-white border-opacity-10">
           <div className="font-mono text-xs text-ink-300 letter-spacing-normal">CUSTOMERS</div>
-          <div className="font-serif text-2xl letter-spacing-tight mt-1">{mockData.customers.toLocaleString()}</div>
+          <div className="font-serif text-2xl letter-spacing-tight mt-1">{mockData.customers.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4">
           <div className="font-mono text-xs text-ink-300 letter-spacing-normal">ISSUED</div>

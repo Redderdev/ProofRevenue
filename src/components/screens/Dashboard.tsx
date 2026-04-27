@@ -152,9 +152,9 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
           <Pill tone="emerald">Active</Pill>
         </div>
         <div className="flex">
-          <Metric label="MRR (preview)" value={`€${mockData.mrr.toLocaleString()}`} sub="From 1,284 subscribers" />
-          <Metric label="ARR (preview)" value={`€${mockData.arr.toLocaleString()}`} sub="MRR × 12" />
-          <Metric label="Customers" value={mockData.customers.toLocaleString()} sub="Active as of today" />
+          <Metric label="MRR (preview)" value={`€${mockData.mrr.toLocaleString('en-US')}`} sub="From 1,284 subscribers" />
+          <Metric label="ARR (preview)" value={`€${mockData.arr.toLocaleString('en-US')}`} sub="MRR × 12" />
+          <Metric label="Customers" value={mockData.customers.toLocaleString('en-US')} sub="Active as of today" />
           <div className="flex-1 px-5 py-4.5 flex items-end">
             <Sparkline data={mockData.mrrHistory} width={120} height={40} />
           </div>
