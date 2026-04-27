@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUser, validatePasswordStrength } from '@/lib/auth';
 import { mockCreateUser } from '@/lib/auth-mock';
 
+const ALLOW_MOCK_FALLBACK =
+  process.env.AUTH_ALLOW_MOCK_FALLBACK === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
 // Input validation
 interface SignupRequest {
   email?: string;
@@ -77,7 +81,15 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (dbError: any) {
-      // Fall back to mock for frontend testing when database unavailable
+      if (!ALLOW_MOCK_FALLBACK) {
+        console.error('Database unavailable during signup:', dbError.message);
+        return NextResponse.json(
+          { error: 'Database unavailable. Please try again shortly.' },
+          { status: 503 }
+        );
+      }
+
+      // Fall back to mock for local frontend testing only
       console.warn('Database unavailable, using mock authentication for testing:', dbError.message);
       
       try {

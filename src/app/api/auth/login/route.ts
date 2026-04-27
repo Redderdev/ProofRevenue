@@ -13,6 +13,10 @@ import {
 } from '@/lib/auth-mock';
 import crypto from 'crypto';
 
+const ALLOW_MOCK_FALLBACK =
+  process.env.AUTH_ALLOW_MOCK_FALLBACK === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
 interface LoginRequest {
   email?: string;
   password?: string;
@@ -46,6 +50,14 @@ export async function POST(request: NextRequest) {
     try {
       user = await authenticateUser(email.toLowerCase().trim(), password);
     } catch (dbError: any) {
+      if (!ALLOW_MOCK_FALLBACK) {
+        console.error('Database unavailable during login:', dbError.message);
+        return NextResponse.json(
+          { error: 'Database unavailable. Please try again shortly.' },
+          { status: 503 }
+        );
+      }
+
       // Fall back to mock for frontend testing when database unavailable
       console.warn('Database unavailable, using mock authentication for testing:', dbError.message);
       user = await mockAuthenticateUser(email.toLowerCase().trim(), password);
@@ -79,6 +91,14 @@ export async function POST(request: NextRequest) {
       // Store refresh token in database (hashed)
       tokenFamily = await storeRefreshToken(user.userId, refreshToken);
     } catch (dbError: any) {
+      if (!ALLOW_MOCK_FALLBACK) {
+        console.error('Token persistence unavailable during login:', dbError.message);
+        return NextResponse.json(
+          { error: 'Session service unavailable. Please try again shortly.' },
+          { status: 503 }
+        );
+      }
+
       // Fall back to mock tokens for testing
       console.warn('Database unavailable, using mock tokens for testing:', dbError.message);
       accessToken = await mockCreateAccessToken(user.userId, user.email, jti);

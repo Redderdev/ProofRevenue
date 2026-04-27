@@ -5,6 +5,10 @@ import { mockVerifyToken, mockGetUserById } from '@/lib/auth-mock';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOW_MOCK_FALLBACK =
+  process.env.AUTH_ALLOW_MOCK_FALLBACK === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
 /**
  * GET /api/auth/me
  * Security:
@@ -28,6 +32,14 @@ export async function GET(request: NextRequest) {
     try {
       decoded = verifyToken(accessToken);
     } catch (dbError: any) {
+      if (!ALLOW_MOCK_FALLBACK) {
+        console.error('Token verification service unavailable:', dbError.message);
+        return NextResponse.json(
+          { error: 'Authentication service unavailable' },
+          { status: 503 }
+        );
+      }
+
       // Fall back to mock token verification
       console.warn('Using mock token verification:', dbError.message);
       decoded = await mockVerifyToken(accessToken);
@@ -45,6 +57,14 @@ export async function GET(request: NextRequest) {
     try {
       user = await getUserById(decoded.userId);
     } catch (dbError: any) {
+      if (!ALLOW_MOCK_FALLBACK) {
+        console.error('User lookup service unavailable:', dbError.message);
+        return NextResponse.json(
+          { error: 'User service unavailable' },
+          { status: 503 }
+        );
+      }
+
       // Fall back to mock user retrieval
       console.warn('Using mock user retrieval:', dbError.message);
       user = await mockGetUserById(decoded.userId);
