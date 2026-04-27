@@ -1,7 +1,7 @@
 // Database schema setup
 import { Pool } from 'pg';
 
-const connectionString =
+const rawConnectionString =
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_URL_NON_POOLING ||
   process.env.DATABASE_URL ||
@@ -12,6 +12,26 @@ const isHostedPostgres = Boolean(
     process.env.POSTGRES_URL_NON_POOLING ||
     process.env.SUPABASE_DATABASE_URL
 );
+
+const sanitizeConnectionString = (value?: string): string | undefined => {
+  if (!value) {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+    // Prevent URL sslmode options from overriding pg ssl config object.
+    url.searchParams.delete('sslmode');
+    url.searchParams.delete('ssl');
+    return url.toString();
+  } catch {
+    return value;
+  }
+};
+
+const connectionString = isHostedPostgres
+  ? sanitizeConnectionString(rawConnectionString)
+  : rawConnectionString;
 
 const pool = new Pool({
   connectionString,
