@@ -1,12 +1,27 @@
 // Database schema setup
 import { Pool } from 'pg';
 
-const pool = new Pool({
-  connectionString:
-    process.env.POSTGRES_URL ||
+const connectionString =
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DATABASE_URL ||
+  process.env.SUPABASE_DATABASE_URL;
+
+const isHostedPostgres = Boolean(
+  process.env.POSTGRES_URL ||
     process.env.POSTGRES_URL_NON_POOLING ||
-    process.env.DATABASE_URL ||
-    process.env.SUPABASE_DATABASE_URL,
+    process.env.SUPABASE_DATABASE_URL
+);
+
+const pool = new Pool({
+  connectionString,
+  // Supabase/Vercel hosted Postgres can present cert chains that are not in
+  // the default trust store in serverless environments.
+  ssl: isHostedPostgres
+    ? {
+        rejectUnauthorized: false,
+      }
+    : undefined,
 });
 
 export const initializeDatabase = async () => {
