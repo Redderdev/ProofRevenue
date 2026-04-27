@@ -1,12 +1,16 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY environment variable is not set');
-}
+export const getStripeServerClient = (): Stripe => {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
-});
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: '2023-10-16',
+  });
+};
 
 // Helper to create Stripe OAuth URL
 export const getStripeOAuthUrl = (state: string): string => {

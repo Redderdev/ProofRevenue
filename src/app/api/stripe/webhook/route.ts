@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import { getStripeServerClient } from '@/lib/stripe';
 // import { getIpAddress } from '@/lib/utils';
 // import { fetchAndCacheMetrics } from '@/lib/stripe-api';
 
@@ -9,6 +9,7 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 // POST /api/stripe/webhook
 export async function POST(request: NextRequest) {
   try {
+    const stripe = getStripeServerClient();
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
 
