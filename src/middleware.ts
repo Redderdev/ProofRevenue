@@ -22,9 +22,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasToken =
+  const cookieNames = request.cookies.getAll().map((cookie) => cookie.name);
+  const hasSupabaseToken = cookieNames.some((name) =>
+    name === 'sb-access-token' ||
+    name === 'sb-refresh-token' ||
+    name.endsWith('-auth-token')
+  );
+  const hasLegacyToken =
     Boolean(request.cookies.get('accessToken')?.value) ||
     Boolean(request.cookies.get('refreshToken')?.value);
+  const hasToken = hasSupabaseToken || hasLegacyToken;
 
   if (isProtectedPath(pathname) && !hasToken) {
     const signinUrl = new URL('/auth/signin', request.url);
