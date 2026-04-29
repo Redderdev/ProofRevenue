@@ -11,16 +11,6 @@
 
 import crypto from 'crypto';
 
-// OAuth State Storage (in-memory with TTL - replace with Redis in production)
-interface StoredState {
-  state: string;
-  userId: string;
-  expiresAt: number;
-  nonce: string;
-}
-
-const stateStore = new Map<string, StoredState>();
-
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const OAUTH_SCOPES = 'read_write';
 const STRIPE_OAUTH_AUTHORIZE_URL = 'https://connect.stripe.com/oauth/authorize';
@@ -30,21 +20,38 @@ const STRIPE_OAUTH_TOKEN_URL = 'https://connect.stripe.com/oauth/token';
  * Generate cryptographically secure state parameter for CSRF protection
  * Stores state with user_id and expiration for validation on callback
  */
+const getStateSecret = (): string => {
+  const secret = process.env.JWT_SECRET || process.env.TOKEN_ENCRYPTION_KEY;
+  if (!secret) {
+    throw new Error('Missing JWT_SECRET or TOKEN_ENCRYPTION_KEY for OAuth state signing');
+  }
+  return secret;
+};
+
+const encodeStatePayload = (payload: string): string => {
+  return Buffer.from(payload).toString('base64url');
+};
+
+const decodeStatePayload = (encoded: string): string => {
+  return Buffer.from(encoded, 'base64url').toString('utf8');
+};
+
+const signStatePayload = (payload: string): string => {
+  return crypto
+    .createHmac('sha256', getStateSecret())
+    .update(payload)
+    .digest('base64url');
+};
+
 export const generateOAuthState = (userId: string): string => {
-  const state = crypto.randomBytes(32).toString('hex');
-  const nonce = crypto.randomBytes(16).toString('hex');
-  
-  stateStore.set(state, {
-    state,
-    userId,
-    expiresAt: Date.now() + OAUTH_STATE_TTL_MS,
-    nonce,
+  const payload = JSON.stringify({
+    u: userId,
+    e: Date.now() + OAUTH_STATE_TTL_MS,
+    n: crypto.randomBytes(16).toString('hex'),
   });
-
-  // Cleanup expired states
-  cleanupExpiredStates();
-
-  return state;
+  const encoded = encodeStatePayload(payload);
+  const signature = signStatePayload(payload);
+  return `${encoded}.${signature}`;
 };
 
 /**
@@ -52,29 +59,44 @@ export const generateOAuthState = (userId: string): string => {
  * Prevents CSRF attacks by ensuring state matches user session
  */
 export const validateOAuthState = (state: string, userId: string): boolean => {
-  const stored = stateStore.get(state);
+  const [encoded, signature] = state.split('.');
 
-  if (!stored) {
-    console.warn(`[OAuth] Invalid state: not found`);
+  if (!encoded || !signature) {
+    console.warn('[OAuth] Invalid state: malformed');
     return false;
   }
 
-  // Check expiration
-  if (stored.expiresAt < Date.now()) {
+  const payload = decodeStatePayload(encoded);
+  const expectedSignature = signStatePayload(payload);
+
+  if (signature.length !== expectedSignature.length) {
+    console.warn('[OAuth] Invalid state: signature length mismatch');
+    return false;
+  }
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    console.warn('[OAuth] Invalid state: signature mismatch');
+    return false;
+  }
+
+  let parsed: { u: string; e: number };
+  try {
+    parsed = JSON.parse(payload) as { u: string; e: number };
+  } catch (error) {
+    console.warn('[OAuth] Invalid state: payload parse error');
+    return false;
+  }
+
+  if (parsed.e < Date.now()) {
     console.warn(`[OAuth] State expired for user: ${userId}`);
-    stateStore.delete(state);
     return false;
   }
 
-  // Check user ID matches
-  if (stored.userId !== userId) {
-    console.error(`[OAuth] State user mismatch: expected ${stored.userId}, got ${userId}`);
-    stateStore.delete(state);
+  if (parsed.u !== userId) {
+    console.error(`[OAuth] State user mismatch: expected ${parsed.u}, got ${userId}`);
     return false;
   }
 
-  // Valid - clean up
-  stateStore.delete(state);
   return true;
 };
 
@@ -226,26 +248,6 @@ export const decryptToken = (encryptedData: string, iv: string): string => {
     console.error('[Decrypt] Failed to decrypt token - possible tampering');
     throw new Error('Failed to decrypt token');
   }
-};
-
-/**
- * Clean up expired states from memory
- * Should be called periodically or after state validation
- */
-const cleanupExpiredStates = (): void => {
-  const now = Date.now();
-  for (const [key, stored] of stateStore.entries()) {
-    if (stored.expiresAt < now) {
-      stateStore.delete(key);
-    }
-  }
-};
-
-/**
- * Clear all states (for testing)
- */
-export const clearOAuthStates = (): void => {
-  stateStore.clear();
 };
 
 /**
