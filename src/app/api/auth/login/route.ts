@@ -1,5 +1,7 @@
 // POST /api/auth/login - User login with Supabase Auth
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { signInUser } from '@/lib/supabase-auth';
 import { consumeLoginAttempt } from '@/lib/rate-limit';
 
@@ -17,6 +19,21 @@ interface LoginRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     // Rate limiting
     const rateLimit = await consumeLoginAttempt(request);
     if (!rateLimit.allowed) {
@@ -40,7 +57,11 @@ export async function POST(request: NextRequest) {
 
     // Sign in user
     try {
-      const { user, session } = await signInUser(email.toLowerCase().trim(), password);
+      const { user } = await signInUser(
+        email.toLowerCase().trim(),
+        password,
+        supabase
+      );
 
       // Create response with session
       const response = NextResponse.json(
@@ -52,8 +73,7 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
 
-      // Supabase Auth handles cookie management automatically
-      // Session tokens are set in httpOnly cookies by Supabase
+      // Supabase Auth helpers set httpOnly cookies automatically
       console.log(`User logged in: ${user.id} (${user.email})`);
 
       return response;

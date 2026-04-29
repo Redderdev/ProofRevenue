@@ -1,12 +1,9 @@
 // POST /api/auth/signup - Create new user account
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createUser, validatePasswordStrength } from '@/lib/auth';
-import { mockCreateUser } from '@/lib/auth-mock';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { signUpUser, validatePasswordStrength } from '@/lib/supabase-auth';
 import { consumeSignupAttempt } from '@/lib/rate-limit';
-
-const ALLOW_MOCK_FALLBACK =
-  process.env.AUTH_ALLOW_MOCK_FALLBACK === 'true' &&
-  process.env.NODE_ENV !== 'production';
 
 // Input validation
 interface SignupRequest {
@@ -26,6 +23,21 @@ interface SignupRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     const rateLimit = await consumeSignupAttempt(request);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -78,7 +90,11 @@ export async function POST(request: NextRequest) {
 
     // Sign up user
     try {
-      const { user } = await signUpUser(email.toLowerCase().trim(), password);
+      const { user } = await signUpUser(
+        email.toLowerCase().trim(),
+        password,
+        supabase
+      );
 
       console.log(`User signed up: ${user.id} (${user.email})`);
 
@@ -102,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: error.message || 'Failed to create account' },
+        { error: 'Failed to create account' },
         { status: 400 }
       );
     }

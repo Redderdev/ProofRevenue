@@ -1,5 +1,7 @@
 // POST /api/auth/signup - Create new user account with Supabase Auth
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { signUpUser, validatePasswordStrength } from '@/lib/supabase-auth';
 import { consumeSignupAttempt } from '@/lib/rate-limit';
 
@@ -19,6 +21,21 @@ interface SignupRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     // Rate limiting
     const rateLimit = await consumeSignupAttempt(request);
     if (!rateLimit.allowed) {
@@ -71,7 +88,11 @@ export async function POST(request: NextRequest) {
 
     // Sign up user
     try {
-      const { user } = await signUpUser(email.toLowerCase().trim(), password);
+      const { user } = await signUpUser(
+        email.toLowerCase().trim(),
+        password,
+        supabase
+      );
 
       console.log(`User signed up: ${user.id} (${user.email})`);
 
@@ -95,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: error.message || 'Failed to create account' },
+        { error: 'Failed to create account' },
         { status: 400 }
       );
     }

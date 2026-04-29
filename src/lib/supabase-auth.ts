@@ -4,6 +4,7 @@
  * Replaces custom bcrypt/JWT auth with Supabase Auth while maintaining compatibility
  * with existing application flow.
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './supabase-client';
 
 export interface AuthUser {
@@ -13,6 +14,39 @@ export interface AuthUser {
   createdAt: string;
   updatedAt: string;
 }
+
+const ensureUserProfile = async (
+  client: SupabaseClient,
+  user: { id: string; email?: string | null }
+) => {
+  const { data: profile, error: profileError } = await client
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error('Profile lookup error:', profileError);
+    return;
+  }
+
+  if (profile) {
+    return;
+  }
+
+  const { error: insertError } = await client
+    .from('users')
+    .insert({
+      id: user.id,
+      email: user.email,
+      is_active: true,
+      failed_login_attempts: 0,
+    });
+
+  if (insertError && !insertError.message.includes('duplicate')) {
+    console.error('Profile creation error:', insertError);
+  }
+};
 
 /**
  * Validate password strength (same requirements as before)
@@ -43,7 +77,11 @@ export const validatePasswordStrength = (password: string): { valid: boolean; er
  * Sign up user with Supabase Auth
  * Creates user in Supabase auth table and public.users profile
  */
-export const signUpUser = async (email: string, password: string): Promise<{ user: AuthUser }> => {
+export const signUpUser = async (
+  email: string,
+  password: string,
+  client: SupabaseClient = supabase
+): Promise<{ user: AuthUser }> => {
   // Validate password strength
   const passwordValidation = validatePasswordStrength(password);
   if (!passwordValidation.valid) {
@@ -51,7 +89,7 @@ export const signUpUser = async (email: string, password: string): Promise<{ use
   }
 
   // Sign up with Supabase Auth
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await client.auth.signUp({
     email: email.toLowerCase().trim(),
     password,
     options: {
@@ -69,20 +107,7 @@ export const signUpUser = async (email: string, password: string): Promise<{ use
   }
 
   // Create user profile in public.users table
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .insert({
-      id: data.user.id,
-      email: data.user.email,
-      is_active: true,
-      failed_login_attempts: 0,
-    })
-    .select()
-    .single();
-
-  if (profileError && !profileError.message.includes('duplicate')) {
-    console.error('Profile creation error:', profileError);
-  }
+  await ensureUserProfile(client, { id: data.user.id, email: data.user.email });
 
   return {
     user: {
@@ -90,7 +115,7 @@ export const signUpUser = async (email: string, password: string): Promise<{ use
       email: data.user.email!,
       isActive: true,
       createdAt: data.user.created_at,
-      updatedAt: data.user.updated_at,
+      updatedAt: data.user.updated_at ?? data.user.created_at,
     },
   };
 };
@@ -98,8 +123,12 @@ export const signUpUser = async (email: string, password: string): Promise<{ use
 /**
  * Sign in user with Supabase Auth
  */
-export const signInUser = async (email: string, password: string): Promise<{ user: AuthUser; session: any }> => {
-  const { data, error } = await supabase.auth.signInWithPassword({
+export const signInUser = async (
+  email: string,
+  password: string,
+  client: SupabaseClient = supabase
+): Promise<{ user: AuthUser; session: any }> => {
+  const { data, error } = await client.auth.signInWithPassword({
     email: email.toLowerCase().trim(),
     password,
   });
@@ -113,8 +142,10 @@ export const signInUser = async (email: string, password: string): Promise<{ use
     throw new Error('Sign-in failed');
   }
 
+  await ensureUserProfile(client, { id: data.user.id, email: data.user.email });
+
   // Record successful login - reset failed attempts
-  await supabase
+  await client
     .from('users')
     .update({
       failed_login_attempts: 0,
@@ -129,7 +160,7 @@ export const signInUser = async (email: string, password: string): Promise<{ use
       email: data.user.email!,
       isActive: true,
       createdAt: data.user.created_at,
-      updatedAt: data.user.updated_at,
+      updatedAt: data.user.updated_at ?? data.user.created_at,
     },
     session: data.session,
   };
@@ -138,15 +169,17 @@ export const signInUser = async (email: string, password: string): Promise<{ use
 /**
  * Get current authenticated user
  */
-export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  const { data, error } = await supabase.auth.getUser();
+export const getCurrentUser = async (
+  client: SupabaseClient = supabase
+): Promise<AuthUser | null> => {
+  const { data, error } = await client.auth.getUser();
 
   if (error || !data.user) {
     return null;
   }
 
   // Fetch user profile
-  const { data: profile } = await supabase
+  const { data: profile } = await client
     .from('users')
     .select('*')
     .eq('id', data.user.id)
@@ -157,15 +190,15 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
     email: data.user.email!,
     isActive: profile?.is_active ?? true,
     createdAt: data.user.created_at,
-    updatedAt: data.user.updated_at,
+    updatedAt: data.user.updated_at ?? data.user.created_at,
   };
 };
 
 /**
  * Sign out user
  */
-export const signOutUser = async (): Promise<void> => {
-  const { error } = await supabase.auth.signOut();
+export const signOutUser = async (client: SupabaseClient = supabase): Promise<void> => {
+  const { error } = await client.auth.signOut();
 
   if (error) {
     console.error('Sign out error:', error);
@@ -191,14 +224,14 @@ export const getSession = async () => {
  * Listen for auth state changes
  */
 export const onAuthStateChange = (callback: (user: AuthUser | null) => void) => {
-  return supabase.auth.onAuthStateChange(async (event, session) => {
+  return supabase.auth.onAuthStateChange(async (_event, session) => {
     if (session?.user) {
       callback({
         id: session.user.id,
         email: session.user.email!,
         isActive: true,
         createdAt: session.user.created_at,
-        updatedAt: session.user.updated_at,
+        updatedAt: session.user.updated_at ?? session.user.created_at,
       });
     } else {
       callback(null);

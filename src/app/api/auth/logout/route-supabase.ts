@@ -1,5 +1,7 @@
 // POST /api/auth/logout - User logout with Supabase Auth
-import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { signOutUser } from '@/lib/supabase-auth';
 
 /**
@@ -8,20 +10,31 @@ import { signOutUser } from '@/lib/supabase-auth';
  * - Clears Supabase session
  * - Revokes all refresh tokens
  */
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     // Sign out
-    await signOutUser();
+    await signOutUser(supabase);
 
     // Create response
     const response = NextResponse.json(
       { success: true, message: 'Logged out successfully' },
       { status: 200 }
     );
-
-    // Clear auth cookies
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
 
     console.log('User logged out');
 
@@ -33,11 +46,6 @@ export async function POST(request: NextRequest) {
       { error: 'Logout failed' },
       { status: 500 }
     );
-
-    // Ensure cookies are cleared even on error
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
-
     return response;
   }
 }
