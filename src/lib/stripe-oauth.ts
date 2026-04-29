@@ -22,7 +22,7 @@ interface StoredState {
 const stateStore = new Map<string, StoredState>();
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const OAUTH_SCOPES = 'read_only';
+const OAUTH_SCOPES = 'read_write';
 const STRIPE_OAUTH_AUTHORIZE_URL = 'https://connect.stripe.com/oauth/authorize';
 const STRIPE_OAUTH_TOKEN_URL = 'https://connect.stripe.com/oauth/token';
 
