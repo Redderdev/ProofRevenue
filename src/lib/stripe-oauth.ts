@@ -90,6 +90,7 @@ export const getStripeOAuthUrl = (state: string): string => {
 
   const params = new URLSearchParams({
     client_id: clientId,
+    response_type: 'code',
     state,
     scope: OAUTH_SCOPES,
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/oauth-callback`,
