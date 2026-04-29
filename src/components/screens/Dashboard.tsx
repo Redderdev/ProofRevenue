@@ -129,12 +129,83 @@ const StateUnconnected: React.FC<{ onAction?: (action: string) => void }> = ({
 const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
   onAction,
 }) => {
-  const mockData = {
-    mrr: 48720,
-    arr: 584640,
-    customers: 1284,
-    mrrHistory: [18200, 21900, 24300, 27800, 31200, 34600, 38100, 41900, 44800, 46500, 47200, 48720],
+  const [metrics, setMetrics] = useState<{
+    mrr: number;
+    arr: number;
+    activeCustomers: number;
+    livemode: boolean;
+  } | null>(null);
+  const [connection, setConnection] = useState<{
+    stripeUserId: string;
+    livemode: boolean;
+    connectedAt: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMetrics = async () => {
+      try {
+        const response = await fetch('/api/stripe/metrics', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || 'Failed to load metrics');
+        }
+
+        const data = await response.json();
+
+        if (!mounted) {
+          return;
+        }
+
+        setMetrics(data.metrics || null);
+        setConnection(data.connection || null);
+        setError(null);
+      } catch (err: any) {
+        if (!mounted) {
+          return;
+        }
+        setError(err?.message || 'Failed to load metrics');
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadMetrics();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const formatCurrency = (value: number) => {
+    const amount = value / 100;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
+
+  const stripeAccountLabel = connection?.stripeUserId
+    ? `${connection.stripeUserId.slice(0, 8)}···${connection.stripeUserId.slice(-4)}`
+    : 'Stripe connected';
+  const modeLabel = connection?.livemode ? 'LIVEMODE' : 'TESTMODE';
+  const connectedDate = connection?.connectedAt
+    ? new Date(connection.connectedAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '—';
 
   return (
     <div className="space-y-6 mb-8">
@@ -143,20 +214,32 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
           <div className="flex items-center gap-2.5">
             <Icon name="stripe-s" size={16} />
             <div>
-              <div className="text-sm font-medium">acct_1QrXz4···kpLm</div>
+              <div className="text-sm font-medium">{stripeAccountLabel}</div>
               <div className="font-mono text-xs text-ink-400">
-                IRELAND · LIVEMODE · CONNECTED NOV 14, 2025
+                {modeLabel} · CONNECTED {connectedDate}
               </div>
             </div>
           </div>
           <Pill tone="emerald">Active</Pill>
         </div>
         <div className="flex">
-          <Metric label="MRR (preview)" value={`€${mockData.mrr.toLocaleString('en-US')}`} sub="From 1,284 subscribers" />
-          <Metric label="ARR (preview)" value={`€${mockData.arr.toLocaleString('en-US')}`} sub="MRR × 12" />
-          <Metric label="Customers" value={mockData.customers.toLocaleString('en-US')} sub="Active as of today" />
+          <Metric
+            label="MRR (preview)"
+            value={loading ? '—' : metrics ? formatCurrency(metrics.mrr) : '—'}
+            sub={loading ? 'Loading…' : metrics ? `From ${metrics.activeCustomers.toLocaleString('en-US')} subscribers` : error || 'Unavailable'}
+          />
+          <Metric
+            label="ARR (preview)"
+            value={loading ? '—' : metrics ? formatCurrency(metrics.arr) : '—'}
+            sub={loading ? 'Loading…' : metrics ? 'MRR × 12' : 'Unavailable'}
+          />
+          <Metric
+            label="Customers"
+            value={loading ? '—' : metrics ? metrics.activeCustomers.toLocaleString('en-US') : '—'}
+            sub={loading ? 'Loading…' : metrics ? 'Active as of today' : 'Unavailable'}
+          />
           <div className="flex-1 px-5 py-4.5 flex items-end">
-            <Sparkline data={mockData.mrrHistory} width={120} height={40} />
+            <Sparkline data={metrics ? [metrics.mrr] : [0]} width={120} height={40} />
           </div>
         </div>
       </Card>

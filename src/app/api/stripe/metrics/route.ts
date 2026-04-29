@@ -6,34 +6,39 @@
  * otherwise fetches fresh data from Stripe API.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-import { getCachedMetrics, fetchAndCacheMetrics, shouldRefreshMetrics } from '@/lib/stripe-api';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { getCachedMetrics, fetchAndCacheMetrics, getStripeConnectionSummary, shouldRefreshMetrics } from '@/lib/stripe-api';
 
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev_secret');
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Verify authentication
-    const accessToken = request.cookies.get('accessToken')?.value;
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
 
-    if (!accessToken) {
+    const { data, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !data.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string;
-    try {
-      const verified = await jwtVerify(accessToken, JWT_SECRET);
-      userId = verified.payload.userId as string;
-
-      if (!userId) {
-        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-      }
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = data.user.id;
+    const connection = await getStripeConnectionSummary(userId);
 
     // Check if we need to refresh (cache older than 60 minutes)
     const needsRefresh = await shouldRefreshMetrics(userId, 60);
@@ -52,6 +57,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
           metrics,
+          connection,
           cached: false,
           timestamp: new Date().toISOString(),
         });
@@ -63,6 +69,7 @@ export async function GET(request: NextRequest) {
         if (cached) {
           return NextResponse.json({
             metrics: cached,
+            connection,
             cached: true,
             error: 'Failed to refresh, returning cached data',
             timestamp: new Date().toISOString(),
@@ -81,6 +88,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       metrics: cached,
+      connection,
       cached: true,
       timestamp: new Date().toISOString(),
     });

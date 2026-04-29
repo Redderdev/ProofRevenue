@@ -22,6 +22,12 @@ interface RevenueMetrics {
   livemode: boolean; // Is this live mode or test mode
 }
 
+export interface StripeConnectionSummary {
+  stripeUserId: string;
+  livemode: boolean;
+  connectedAt: string;
+}
+
 /**
  * Get Stripe API client for a specific connected account
  * Uses server-side encrypted tokens only
@@ -55,6 +61,35 @@ const getStripeClient = async (userId: string): Promise<{ client: Stripe; stripe
     return {
       client: stripe,
       stripeUserId: connection.stripe_user_id,
+    };
+  } finally {
+    client.release();
+  }
+};
+
+export const getStripeConnectionSummary = async (
+  userId: string
+): Promise<StripeConnectionSummary | null> => {
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `SELECT stripe_user_id, livemode, connected_at
+       FROM stripe_connections
+       WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+
+    return {
+      stripeUserId: row.stripe_user_id,
+      livemode: row.livemode === true,
+      connectedAt: row.connected_at?.toISOString?.() ?? String(row.connected_at),
     };
   } finally {
     client.release();
