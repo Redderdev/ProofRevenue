@@ -81,6 +81,7 @@ const DashboardBody: React.FC<{
   state: string;
   onAction?: (action: string) => void;
 }> = ({ state, onAction }) => {
+  if (state === 'stripe_error') return <StateStripeError onAction={onAction} />;
   if (state === 'unconnected') return <StateUnconnected onAction={onAction} />;
   if (state === 'stripe_connected') return <StateConnected onAction={onAction} />;
   if (state === 'stripe_revoked_before_payment')
@@ -92,6 +93,37 @@ const DashboardBody: React.FC<{
     return <StateRevokedPost />;
   return null;
 };
+
+const StateStripeError: React.FC<{ onAction?: (action: string) => void }> = ({
+  onAction,
+}) => (
+  <Card className="overflow-hidden mb-8">
+    <div className="px-6 py-4 bg-ruby-soft border-b border-line flex items-center gap-3">
+      <Icon name="warn" size={16} color="oklch(0.38 0.13 25)" />
+      <div className="text-sm text-red-900">
+        Stripe connection failed. No data was imported.
+      </div>
+    </div>
+    <div className="p-8">
+      <h2 className="font-serif text-2xl letter-spacing-tight mb-2">
+        Try connecting Stripe again
+      </h2>
+      <p className="text-sm text-ink-600 mb-5 max-w-lg leading-relaxed">
+        This usually happens if the authorization was cancelled or expired. Your
+        account is still safe, and you can retry the connection.
+      </p>
+      <div className="flex items-center gap-2.5">
+        <Button variant="primary" onClick={() => onAction?.('connect')}>
+          <Icon name="stripe-s" size={14} color="white" />
+          Reconnect Stripe
+        </Button>
+        <Button variant="ghost" onClick={() => onAction?.('contact')}>
+          Contact support
+        </Button>
+      </div>
+    </div>
+  </Card>
+);
 
 const StateUnconnected: React.FC<{ onAction?: (action: string) => void }> = ({
   onAction,
