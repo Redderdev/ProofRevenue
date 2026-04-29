@@ -26,6 +26,9 @@ export interface StripeConnectionSummary {
   stripeUserId: string;
   livemode: boolean;
   connectedAt: string;
+  displayName?: string | null;
+  displayUrl?: string | null;
+  country?: string | null;
 }
 
 /**
@@ -74,7 +77,7 @@ export const getStripeConnectionSummary = async (
 
   try {
     const result = await client.query(
-      `SELECT stripe_user_id, livemode, connected_at
+      `SELECT stripe_user_id, livemode, connected_at, account_name, account_url, account_country
        FROM stripe_connections
        WHERE user_id = $1 AND revoked_at IS NULL`,
       [userId]
@@ -90,6 +93,9 @@ export const getStripeConnectionSummary = async (
       stripeUserId: row.stripe_user_id,
       livemode: row.livemode === true,
       connectedAt: row.connected_at?.toISOString?.() ?? String(row.connected_at),
+      displayName: row.account_name,
+      displayUrl: row.account_url,
+      country: row.account_country,
     };
   } finally {
     client.release();

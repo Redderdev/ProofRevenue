@@ -171,6 +171,9 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
     stripeUserId: string;
     livemode: boolean;
     connectedAt: string;
+    displayName?: string | null;
+    displayUrl?: string | null;
+    country?: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -227,9 +230,13 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
     }).format(amount);
   };
 
-  const stripeAccountLabel = connection?.stripeUserId
-    ? `${connection.stripeUserId.slice(0, 8)}···${connection.stripeUserId.slice(-4)}`
-    : 'Stripe connected';
+  const stripeAccountLabel = connection?.displayName?.trim()
+    ? connection.displayName
+    : connection?.displayUrl
+      ? new URL(connection.displayUrl).hostname.replace(/^www\./, '')
+      : connection?.stripeUserId
+        ? `${connection.stripeUserId.slice(0, 8)}···${connection.stripeUserId.slice(-4)}`
+        : 'Stripe connected';
   const modeLabel = connection?.livemode ? 'LIVEMODE' : 'TESTMODE';
   const connectedDate = connection?.connectedAt
     ? new Date(connection.connectedAt).toLocaleDateString('en-US', {
@@ -238,6 +245,7 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
         year: 'numeric',
       })
     : '—';
+  const countryLabel = connection?.country ? connection.country.toUpperCase() : null;
 
   return (
     <div className="space-y-6 mb-8">
@@ -248,7 +256,7 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
             <div>
               <div className="text-sm font-medium">{stripeAccountLabel}</div>
               <div className="font-mono text-xs text-ink-400">
-                {modeLabel} · CONNECTED {connectedDate}
+                {countryLabel ? `${countryLabel} · ` : ''}{modeLabel} · CONNECTED {connectedDate}
               </div>
             </div>
           </div>

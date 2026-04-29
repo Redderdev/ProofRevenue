@@ -15,6 +15,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { validateOAuthState, exchangeOAuthCode, encryptToken, logOAuthEvent } from '@/lib/stripe-oauth';
+import Stripe from 'stripe';
 import pool from '@/lib/db';
 
 export async function GET(request: NextRequest) {
@@ -134,6 +135,14 @@ export async function GET(request: NextRequest) {
       ? encryptToken(tokenResponse.refresh_token)
       : null;
 
+    const stripeClient = new Stripe(tokenResponse.access_token, {
+      apiVersion: '2023-10-16',
+    });
+    const account = await stripeClient.accounts.retrieve();
+    const accountName = account.business_profile?.name || account.settings?.dashboard?.display_name || null;
+    const accountUrl = account.business_profile?.url || null;
+    const accountCountry = account.country || null;
+
     // Save to database (or update if already connected)
     await client.query('BEGIN');
 
@@ -153,6 +162,9 @@ export async function GET(request: NextRequest) {
              refresh_token_iv = $5,
              livemode = $6,
              scope = $7,
+             account_name = $8,
+             account_url = $9,
+             account_country = $10,
              connected_at = CURRENT_TIMESTAMP,
              revoked_at = NULL,
              last_metrics_fetch = NULL,
@@ -166,6 +178,9 @@ export async function GET(request: NextRequest) {
           refreshTokenData ? refreshTokenData.iv : null,
           tokenResponse.livemode,
           tokenResponse.scope,
+          accountName,
+          accountUrl,
+          accountCountry,
         ]
       );
     } else {
@@ -180,8 +195,11 @@ export async function GET(request: NextRequest) {
           refresh_token_iv,
           livemode,
           scope,
+          account_name,
+          account_url,
+          account_country,
           connected_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)`,
         [
           userId,
           tokenResponse.stripe_user_id,
@@ -191,6 +209,9 @@ export async function GET(request: NextRequest) {
           refreshTokenData ? refreshTokenData.iv : null,
           tokenResponse.livemode,
           tokenResponse.scope,
+          accountName,
+          accountUrl,
+          accountCountry,
         ]
       );
     }
