@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from './supabase-client';
 
 export interface AuthUser {
   id: string;
@@ -24,9 +25,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is authenticated on mount
+  // Check if user is authenticated on mount and listen for auth changes
   useEffect(() => {
     checkAuth();
+
+    // Subscribe to auth state changes from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await checkAuth();
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -72,6 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         credentials: 'include',
       });
+      // Supabase session is cleared by signOut
+      await supabase.auth.signOut();
     } finally {
       setUser(null);
     }
@@ -79,18 +95,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = async () => {
     try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        await checkAuth();
-      } else {
-        setUser(null);
-      }
+      // Supabase automatically refreshes tokens via onAuthStateChange
+      // This is kept for compatibility but largely handled by Supabase
+      await checkAuth();
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      console.error('Session refresh failed:', error);
       setUser(null);
     }
   };

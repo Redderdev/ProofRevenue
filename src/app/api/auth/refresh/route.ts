@@ -4,7 +4,6 @@ import {
   verifyToken,
   createAccessToken,
   verifyRefreshTokenExists,
-  hashPassword,
 } from '@/lib/auth';
 import crypto from 'crypto';
 
@@ -39,11 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash the refresh token to check against database
-    const tokenHash = await hashPassword(refreshToken);
-
     // Verify token exists in database and hasn't been revoked
-    const tokenExists = await verifyRefreshTokenExists(decoded.userId, tokenHash);
+    const tokenExists = await verifyRefreshTokenExists(decoded.userId, refreshToken);
 
     if (!tokenExists) {
       // Token doesn't exist or was revoked - potential replay attack

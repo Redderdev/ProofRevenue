@@ -1,14 +1,8 @@
-// POST /api/auth/signup - Create new user account
+// POST /api/auth/signup - Create new user account with Supabase Auth
 import { NextRequest, NextResponse } from 'next/server';
-import { createUser, validatePasswordStrength } from '@/lib/auth';
-import { mockCreateUser } from '@/lib/auth-mock';
+import { signUpUser, validatePasswordStrength } from '@/lib/supabase-auth';
 import { consumeSignupAttempt } from '@/lib/rate-limit';
 
-const ALLOW_MOCK_FALLBACK =
-  process.env.AUTH_ALLOW_MOCK_FALLBACK === 'true' &&
-  process.env.NODE_ENV !== 'production';
-
-// Input validation
 interface SignupRequest {
   email?: string;
   password?: string;
@@ -18,14 +12,14 @@ interface SignupRequest {
 /**
  * POST /api/auth/signup
  * Security:
- * - Validates email format
- * - Validates password strength
- * - Prevents duplicate accounts
- * - Hashes password before storage
- * - Returns generic errors (no enumeration)
+ * - Rate-limited by IP (max 3 per hour)
+ * - Password strength validation (8+ chars, uppercase, lowercase, number, special char)
+ * - Email format validation
+ * - Handles by Supabase Auth (password hashing, user creation)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
     const rateLimit = await consumeSignupAttempt(request);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -36,10 +30,9 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate input
     const body: SignupRequest = await request.json();
-
     const { email, password, confirmPassword } = body;
 
-    // Input validation - generic error messages
+    // Input validation
     if (!email || !password || !confirmPassword) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -47,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format (simple regex - production should use email verification)
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -60,9 +53,9 @@ export async function POST(request: NextRequest) {
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.valid) {
       return NextResponse.json(
-        { 
+        {
           error: 'Password does not meet security requirements',
-          requirements: passwordValidation.errors 
+          requirements: passwordValidation.errors,
         },
         { status: 400 }
       );

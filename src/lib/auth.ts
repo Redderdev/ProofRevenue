@@ -1,6 +1,7 @@
 // Secure authentication service
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import pool from './db';
 
 const BCRYPT_ROUNDS = 12;
@@ -79,6 +80,14 @@ interface TokenPayload {
   exp?: number;
   jti?: string; // JWT ID for token tracking
 }
+
+/**
+ * Create a deterministic fingerprint for refresh tokens.
+ * Used for database lookups and replay detection without storing raw tokens.
+ */
+export const hashRefreshToken = (token: string): string => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
 
 /**
  * Create access token (short-lived, 15 minutes)
@@ -225,8 +234,10 @@ export const storeRefreshToken = async (
   const client = await pool.connect();
 
   try {
-    // Hash refresh token before storing (never store plain tokens)
-    const tokenHash = await hashPassword(refreshToken);
+    // Store only a deterministic fingerprint of the refresh token.
+    // bcrypt is intentionally not used here because its salted output is not
+    // suitable for later lookup of the same token value.
+    const tokenHash = hashRefreshToken(refreshToken);
     const family = tokenFamily || crypto.randomUUID();
 
     await client.query(
@@ -245,7 +256,8 @@ export const storeRefreshToken = async (
  * Verify refresh token exists and hasn't been revoked
  * If token reuse detected (replay attack), revoke entire family
  */
-export const verifyRefreshTokenExists = async (userId: string, tokenHash: string): Promise<boolean> => {
+export const verifyRefreshTokenExists = async (userId: string, refreshToken: string): Promise<boolean> => {
+  const tokenHash = hashRefreshToken(refreshToken);
   const result = await pool.query(
     `SELECT id, revoked_at FROM auth_tokens 
      WHERE user_id = $1 AND refresh_token_hash = $2 AND expires_at > CURRENT_TIMESTAMP`,
