@@ -6,8 +6,8 @@ const loginLimiter = new RateLimiterMemory({
 });
 
 const signupLimiter = new RateLimiterMemory({
-  points: 3,
-  duration: 60 * 60,
+  points: 10,
+  duration: 15 * 60,
 });
 
 const normalizeIp = (ip: string | null): string => {
@@ -39,6 +39,6 @@ export const consumeSignupAttempt = async (request: Request): Promise<{ allowed:
     await signupLimiter.consume(ip, 1);
     return { allowed: true };
   } catch (rateLimiterRes: any) {
-    return { allowed: false, retryAfter: Math.ceil(rateLimiterRes?.msBeforeNext / 1000) || 3600 };
+    return { allowed: false, retryAfter: Math.ceil(rateLimiterRes?.msBeforeNext / 1000) || 900 };
   }
 };

@@ -11,12 +11,11 @@
  * 5. Redirects to frontend callback page with session info
  */
 
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { validateOAuthState, exchangeOAuthCode, encryptToken, logOAuthEvent } from '@/lib/stripe-oauth';
-import { jwtVerify } from 'jose';
 import pool from '@/lib/db';
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev_secret');
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -25,32 +24,33 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error') as string | null;
   const errorDescription = searchParams.get('error_description');
 
-  // Get access token from cookie to identify user
-  const accessToken = request.cookies.get('accessToken')?.value;
-
-  if (!accessToken) {
-    console.warn('[OAuth Callback] Missing access token');
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/auth/signin?next=%2Fdashboard%3Fstate%3Dstripe_error`,
-      { status: 302 }
-    );
-  }
-
-  let userId: string;
-  try {
-    const verified = await jwtVerify(accessToken, JWT_SECRET);
-    userId = verified.payload.userId as string;
-
-    if (!userId) {
-      throw new Error('No user ID in token');
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
     }
-  } catch (error) {
-    console.warn('[OAuth Callback] Invalid token:', error);
+  );
+
+  const { data, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !data.user) {
+    console.warn('[OAuth Callback] Missing Supabase session');
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/auth/signin?next=%2Fdashboard%3Fstate%3Dstripe_error`,
       { status: 302 }
     );
   }
+
+  const userId = data.user.id;
 
   // Handle user denial
   if (error) {

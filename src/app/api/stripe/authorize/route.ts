@@ -7,45 +7,41 @@
  * The state parameter is used for CSRF protection.
  */
 
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { generateOAuthState, getStripeOAuthUrl, logOAuthEvent } from '@/lib/stripe-oauth';
-import { jwtVerify } from 'jose';
 
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev_secret');
-
 export async function GET(request: NextRequest) {
   try {
-    // Get access token from cookie
-    const accessToken = request.cookies.get('accessToken')?.value;
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
 
-    if (!accessToken) {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Verify token and extract user ID
-    let userId: string;
-    try {
-      const verified = await jwtVerify(accessToken, JWT_SECRET);
-      userId = verified.payload.userId as string;
-
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Invalid token' },
-          { status: 401 }
-        );
-      }
-    } catch (error) {
-      console.warn('[OAuth] Invalid token:', error);
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    const userId = data.user.id;
 
     // Generate secure state for CSRF protection
     const state = generateOAuthState(userId);
