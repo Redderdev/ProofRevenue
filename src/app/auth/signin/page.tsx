@@ -8,7 +8,8 @@ import { useAuth } from '@/lib/AuthContext';
 export const dynamic = 'force-dynamic';
 
 function sanitizeNextPath(path: string | null): string {
-  if (!path || !path.startsWith('/')) {
+  // Reject null, empty, non-relative, or protocol-relative URLs (//evil.com)
+  if (!path || !path.startsWith('/') || path.startsWith('//')) {
     return '/dashboard';
   }
 

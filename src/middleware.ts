@@ -41,7 +41,9 @@ export function middleware(request: NextRequest) {
 
   if (isAuthPage(pathname) && hasToken) {
     const next = request.nextUrl.searchParams.get('next');
-    return NextResponse.redirect(new URL(next || '/dashboard', request.url));
+    // Only allow relative paths — reject absolute URLs and protocol-relative URLs (//evil.com)
+    const safePath = (next && next.startsWith('/') && !next.startsWith('//')) ? next : '/dashboard';
+    return NextResponse.redirect(new URL(safePath, request.url));
   }
 
   return NextResponse.next();

@@ -1,20 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const secret = request.headers.get('x-health-secret');
+  if (!process.env.HEALTH_SECRET || secret !== process.env.HEALTH_SECRET) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   const diagnostics = {
     ok: false,
     connection: false,
     usersTableExists: false,
     authTokensTableExists: false,
     certificatesTableExists: false,
-    envSource: {
-      hasPostgresUrl: !!process.env.POSTGRES_URL,
-      hasPostgresUrlNonPooling: !!process.env.POSTGRES_URL_NON_POOLING,
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-    },
     error: null as string | null,
     dbCode: null as string | null,
   };
