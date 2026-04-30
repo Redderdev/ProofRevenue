@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Dashboard } from '@/components/screens/Dashboard';
+import { Dashboard, CertificateData } from '@/components/screens/Dashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +36,7 @@ function DashboardPageContent() {
   const [state, setState] = useState<DashboardState>(
     paymentSuccess ? 'payment_pending' : 'unconnected'
   );
+  const [certificate, setCertificate] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -53,10 +54,18 @@ function DashboardPageContent() {
       try {
         const res = await fetch('/api/certificate/status', { credentials: 'include' });
         if (!res.ok) return;
-        const { certificate } = await res.json();
-        const next = certRowToState(certificate);
+        const { certificate: cert } = await res.json();
+        const next = certRowToState(cert);
         if (next) {
           setState(next);
+          if (cert) setCertificate({
+            id: cert.id,
+            verifiedAt: cert.verified_at,
+            issuedAt: cert.issued_at,
+            mrr: cert.mrr,
+            arr: cert.arr,
+            customers: cert.customers,
+          });
           if (next === 'certificate_active') stopPolling();
         }
       } catch {
@@ -73,10 +82,18 @@ function DashboardPageContent() {
         // First check if there's already a certificate for this user
         const certRes = await fetch('/api/certificate/status', { credentials: 'include' });
         if (certRes.ok) {
-          const { certificate } = await certRes.json();
-          const certState = certRowToState(certificate);
+          const { certificate: cert } = await certRes.json();
+          const certState = certRowToState(cert);
           if (certState && mounted) {
             setState(certState);
+            if (cert) setCertificate({
+              id: cert.id,
+              verifiedAt: cert.verified_at,
+              issuedAt: cert.issued_at,
+              mrr: cert.mrr,
+              arr: cert.arr,
+              customers: cert.customers,
+            });
             if (certState === 'payment_pending' || certState === 'data_pending') {
               startPolling();
             }
@@ -157,6 +174,7 @@ function DashboardPageContent() {
       activeNav="dashboard"
       onAction={handleAction}
       onNav={handleNav}
+      certificate={certificate}
     />
   );
 }

@@ -8,11 +8,21 @@ import { Pill, StateBadge } from '@/components/Badge';
 import { useAuth } from '@/lib/AuthContext';
 import clsx from 'clsx';
 
+export interface CertificateData {
+  id: string;
+  verifiedAt: string | null;
+  issuedAt: string | null;
+  mrr?: number | null;
+  arr?: number | null;
+  customers?: number | null;
+}
+
 interface DashboardProps {
   state?: string;
   activeNav?: 'dashboard' | 'certificate' | 'settings';
   onNav?: (screen: string) => void;
   onAction?: (action: string) => void;
+  certificate?: CertificateData | null;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -20,6 +30,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   activeNav = 'dashboard',
   onNav,
   onAction,
+  certificate,
 }) => {
   const { user } = useAuth();
   return (
@@ -70,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Dashboard body based on state */}
-        <DashboardBody state={state} onAction={onAction} />
+        <DashboardBody state={state} onAction={onAction} certificate={certificate} />
 
         {/* Onboarding stepper */}
         <OnboardingStepper state={state} />
@@ -82,7 +93,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 const DashboardBody: React.FC<{
   state: string;
   onAction?: (action: string) => void;
-}> = ({ state, onAction }) => {
+  certificate?: CertificateData | null;
+}> = ({ state, onAction, certificate }) => {
   if (state === 'stripe_error') return <StateStripeError onAction={onAction} />;
   if (state === 'unconnected') return <StateUnconnected onAction={onAction} />;
   if (state === 'stripe_connected') return <StateConnected onAction={onAction} />;
@@ -90,7 +102,7 @@ const DashboardBody: React.FC<{
     return <StateRevokedPre onAction={onAction} />;
   if (state === 'payment_pending') return <StatePaymentPending />;
   if (state === 'data_pending') return <StateDataPending />;
-  if (state === 'certificate_active') return <StateActive />;
+  if (state === 'certificate_active') return <StateActive certificate={certificate} />;
   if (state === 'stripe_revoked_after_payment')
     return <StateRevokedPost />;
   return null;
@@ -422,12 +434,32 @@ const StateDataPending: React.FC = () => {
   );
 };
 
-const StateActive: React.FC = () => {
+const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certificate }) => {
   const [copied, setCopied] = useState(false);
-  const certLink = 'https://proof.revenue/c/cal9x2f4kn';
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+  const certLink = certificate?.id ? `${appUrl}/c/${certificate.id}` : '';
+
+  const verifiedLabel = certificate?.verifiedAt
+    ? new Date(certificate.verifiedAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        hour12: false,
+      }) + ' UTC'
+    : certificate?.issuedAt
+      ? new Date(certificate.issuedAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : '—';
 
   const copyLink = () => {
-    navigator.clipboard?.writeText(certLink);
+    if (certLink) navigator.clipboard?.writeText(certLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -437,13 +469,13 @@ const StateActive: React.FC = () => {
       <div className="flex items-center gap-2.5 mb-4">
         <Icon name="shield-check" size={16} color="oklch(0.62 0.14 158)" />
         <span className="font-mono text-xs letter-spacing-wide text-emerald-ink uppercase">
-          CERTIFICATE ACTIVE · VERIFIED APR 23, 2026 09:41 UTC
+          CERTIFICATE ACTIVE · VERIFIED {verifiedLabel.toUpperCase()}
         </span>
       </div>
       <div className="flex items-center gap-3 p-2.5 border border-line rounded bg-paper-alt">
         <Icon name="link" size={14} color="var(--ink-400)" />
-        <span className="font-mono text-sm flex-1">{certLink}</span>
-        <Button variant="ghost" size="sm" onClick={copyLink}>
+        <span className="font-mono text-sm flex-1">{certLink || '—'}</span>
+        <Button variant="ghost" size="sm" onClick={copyLink} disabled={!certLink}>
           {copied ? (
             <>
               <Icon name="check" size={12} color="oklch(0.62 0.14 158)" />
