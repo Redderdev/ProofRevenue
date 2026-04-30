@@ -10,6 +10,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { getCachedMetrics, fetchAndCacheMetrics, getStripeConnectionSummary, getStripeConnectStatus, shouldRefreshMetrics } from '@/lib/stripe-api';
+import { consumeMetricsRequest } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,15 @@ export async function GET() {
     }
 
     const userId = data.user.id;
+
+    const rateLimit = await consumeMetricsRequest(userId);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
+      );
+    }
+
     const connection = await getStripeConnectionSummary(userId);
     const connectStatus = await getStripeConnectStatus(userId);
 

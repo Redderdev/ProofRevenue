@@ -319,8 +319,8 @@ export const getCachedMetrics = async (
       `SELECT mrr, arr, active_customers, livemode, last_metrics_fetch
        FROM stripe_connections
        WHERE user_id = $1
-       AND last_metrics_fetch > NOW() - INTERVAL '${maxAgeMins} minutes'`,
-      [userId]
+       AND last_metrics_fetch > NOW() - ($2 * INTERVAL '1 minute')`,
+      [userId, maxAgeMins]
     );
 
     if (result.rows.length === 0) {

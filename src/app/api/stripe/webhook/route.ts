@@ -3,7 +3,10 @@ import pool from '@/lib/db';
 import { getStripeServerClient } from '@/lib/stripe';
 import { fetchAndCacheMetrics } from '@/lib/stripe-api';
 
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+if (!WEBHOOK_SECRET) {
+  throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
+}
 
 // POST /api/stripe/webhook
 export async function POST(request: NextRequest) {
@@ -20,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify Stripe webhook signature
-    const event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
+    const event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET!);
 
     const client = await pool.connect();
 
@@ -99,6 +102,16 @@ export async function POST(request: NextRequest) {
 
           if (!certificateId || !userId) {
             console.error('[Webhook] Missing certificateId or userId in session metadata');
+            break;
+          }
+
+          // Verify the certificate belongs to the claimed userId — never trust metadata alone
+          const ownerCheck = await client.query(
+            `SELECT user_id FROM certificates WHERE id = $1`,
+            [certificateId]
+          );
+          if (ownerCheck.rows.length === 0 || ownerCheck.rows[0].user_id !== userId) {
+            console.error(`[Webhook] Ownership mismatch for certificate ${certificateId} / user ${userId}`);
             break;
           }
 
