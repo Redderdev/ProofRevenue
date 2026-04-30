@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { getStripeServerClient } from '@/lib/stripe';
-// import { getIpAddress } from '@/lib/utils';
-// import { fetchAndCacheMetrics } from '@/lib/stripe-api';
+import { fetchAndCacheMetrics } from '@/lib/stripe-api';
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 
@@ -96,24 +95,90 @@ export async function POST(request: NextRequest) {
         case 'checkout.session.completed': {
           const session = event.data.object as any;
           const certificateId = session.metadata?.certificateId;
+          const userId = session.metadata?.userId;
 
-          if (!certificateId) {
-            console.error('Missing certificateId in session metadata');
+          if (!certificateId || !userId) {
+            console.error('[Webhook] Missing certificateId or userId in session metadata');
             break;
           }
 
-          // Update certificate status to processing
-          await client.query(
-            `UPDATE certificates SET status = 'processing', data_status = 'pending'
-             WHERE id = $1`,
-            [certificateId]
-          );
+          const now = new Date();
+          const nextRefresh = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-          // Log audit entry
+          try {
+            // Fetch live metrics from the user's connected Stripe account
+            const metrics = await fetchAndCacheMetrics(userId);
+
+            // Pull last 12 months of MRR history for the sparkline
+            const historyResult = await client.query(
+              `SELECT mrr FROM revenue_snapshots
+               WHERE user_id = $1
+               ORDER BY snapshot_date ASC
+               LIMIT 12`,
+              [userId]
+            );
+            const mrrHistory = historyResult.rows.map((r: any) => r.mrr);
+            // Always include today's value at the end
+            if (metrics) mrrHistory.push(metrics.mrr);
+
+            if (metrics) {
+              await client.query(
+                `UPDATE certificates
+                 SET status = 'active',
+                     data_status = 'verified',
+                     is_active = true,
+                     mrr = $1,
+                     arr = $2,
+                     customers = $3,
+                     total_revenue = $4,
+                     mrr_history = $5,
+                     issued_at = $6,
+                     verified_at = $6,
+                     last_snapshot_at = $6,
+                     next_refresh_at = $7,
+                     updated_at = $6
+                 WHERE id = $8`,
+                [
+                  metrics.mrr,
+                  metrics.arr,
+                  metrics.activeCustomers,
+                  metrics.totalRevenue,
+                  JSON.stringify(mrrHistory),
+                  now,
+                  nextRefresh,
+                  certificateId,
+                ]
+              );
+              console.log(`[Webhook] Certificate ${certificateId} issued with real metrics`);
+            } else {
+              // Metrics unavailable — activate the cert, mark data as pending for retry
+              await client.query(
+                `UPDATE certificates
+                 SET status = 'active',
+                     data_status = 'pending',
+                     is_active = true,
+                     issued_at = $1,
+                     updated_at = $1
+                 WHERE id = $2`,
+                [now, certificateId]
+              );
+              console.warn(`[Webhook] Certificate ${certificateId} issued but metrics unavailable`);
+            }
+          } catch (err) {
+            console.error('[Webhook] Failed to snapshot metrics:', err);
+            // Still activate the cert so the user isn't blocked
+            await client.query(
+              `UPDATE certificates
+               SET status = 'active', is_active = true, issued_at = $1, updated_at = $1
+               WHERE id = $2`,
+              [now, certificateId]
+            );
+          }
+
           await client.query(
             `INSERT INTO audit_logs (actor, action, target, ip_address, role, status, details)
-             VALUES ('system', 'webhook_checkout_complete', $1, $2, NULL, 'success', $3)`,
-            [session.id, 'stripe', JSON.stringify({ sessionId: session.id })]
+             VALUES ('system', 'certificate_issued', $1, 'stripe', NULL, 'success', $2)`,
+            [certificateId, JSON.stringify({ sessionId: session.id, userId })]
           );
 
           break;

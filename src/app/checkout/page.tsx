@@ -1,16 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Checkout } from '@/components/screens/Checkout';
 
 export default function CheckoutPage() {
   const router = useRouter();
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const startCheckout = async () => {
+      try {
+        const res = await fetch('/api/certificate/checkout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (cancelled) return;
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error('[Checkout] Error:', body.error);
+          router.replace('/dashboard');
+          return;
+        }
+
+        const { url } = await res.json();
+        if (url) {
+          window.location.href = url;
+        } else {
+          router.replace('/dashboard');
+        }
+      } catch {
+        if (!cancelled) router.replace('/dashboard');
+      }
+    };
+
+    startCheckout();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   return (
-    <Checkout
-      onComplete={() => router.push('/dashboard?state=data_pending')}
-      onCancel={() => router.push('/dashboard?state=stripe_connected')}
-    />
+    <main className="min-h-screen bg-paper flex items-center justify-center">
+      <span className="font-mono text-xs text-ink-400">Preparing checkout…</span>
+    </main>
   );
 }

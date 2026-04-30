@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dashboard } from '@/components/screens/Dashboard';
 
@@ -16,57 +16,80 @@ type DashboardState =
   | 'certificate_active'
   | 'stripe_revoked_after_payment';
 
-const allowedStates: DashboardState[] = [
-  'unconnected',
-  'stripe_connected',
-  'stripe_error',
-  'stripe_revoked_before_payment',
-  'payment_pending',
-  'data_pending',
-  'certificate_active',
-  'stripe_revoked_after_payment',
-];
-
-function getDashboardState(param: string | null): DashboardState {
-  if (param && allowedStates.includes(param as DashboardState)) {
-    return param as DashboardState;
-  }
-  return 'unconnected';
+function certRowToState(cert: {
+  status: string;
+  data_status: string;
+  is_active: boolean;
+} | null): DashboardState | null {
+  if (!cert) return null;
+  if (cert.status === 'draft') return 'payment_pending';
+  if (cert.status === 'active' && cert.data_status === 'verified') return 'certificate_active';
+  if (cert.status === 'active') return 'data_pending';
+  return null;
 }
 
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const stateParam = searchParams.get('state');
-  const resolvedParamState = useMemo(
-    () => getDashboardState(stateParam),
-    [stateParam]
+  const paymentSuccess = searchParams.get('payment') === 'success';
+
+  const [state, setState] = useState<DashboardState>(
+    paymentSuccess ? 'payment_pending' : 'unconnected'
   );
-  const [state, setState] = useState<DashboardState>(resolvedParamState);
-  const [loading, setLoading] = useState(stateParam === null);
+  const [loading, setLoading] = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  // Poll /api/certificate/status until the cert is active and verified
+  const startPolling = () => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/certificate/status', { credentials: 'include' });
+        if (!res.ok) return;
+        const { certificate } = await res.json();
+        const next = certRowToState(certificate);
+        if (next) {
+          setState(next);
+          if (next === 'certificate_active') stopPolling();
+        }
+      } catch {
+        // ignore transient errors during polling
+      }
+    }, 5000);
+  };
 
   useEffect(() => {
-    if (stateParam !== null) {
-      setState(resolvedParamState);
-      setLoading(false);
-      return;
-    }
-
     let mounted = true;
 
     const loadState = async () => {
       try {
-        const response = await fetch('/api/stripe/metrics', {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (!mounted) {
-          return;
+        // First check if there's already a certificate for this user
+        const certRes = await fetch('/api/certificate/status', { credentials: 'include' });
+        if (certRes.ok) {
+          const { certificate } = await certRes.json();
+          const certState = certRowToState(certificate);
+          if (certState && mounted) {
+            setState(certState);
+            if (certState === 'payment_pending' || certState === 'data_pending') {
+              startPolling();
+            }
+            return;
+          }
         }
 
-        if (response.ok) {
-          const data = await response.json().catch(() => ({}));
+        // No certificate — check Stripe connection
+        const metricsRes = await fetch('/api/stripe/metrics', { credentials: 'include' });
+        if (!mounted) return;
+
+        if (metricsRes.ok) {
+          const data = await metricsRes.json().catch(() => ({}));
           if (data.connection) {
             setState('stripe_connected');
             return;
@@ -80,23 +103,27 @@ function DashboardPageContent() {
         }
 
         setState('stripe_error');
-      } catch (error) {
-        if (mounted) {
-          setState('stripe_error');
-        }
+      } catch {
+        if (mounted) setState('stripe_error');
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    loadState();
+    if (paymentSuccess) {
+      // Stripe redirected back after payment — start polling immediately
+      setLoading(false);
+      startPolling();
+    } else {
+      loadState();
+    }
 
     return () => {
       mounted = false;
+      stopPolling();
     };
-  }, [resolvedParamState, stateParam]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAction = (action: string) => {
     if (action === 'connect') {
@@ -117,7 +144,7 @@ function DashboardPageContent() {
       router.push('/dashboard/settings');
       return;
     }
-    router.push(`/dashboard?state=${state}`);
+    router.push('/dashboard');
   };
 
   if (loading) {

@@ -5,6 +5,7 @@ import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Logo, Card, Metric, Sparkline } from '@/components/Common';
 import { Pill, StateBadge } from '@/components/Badge';
+import { useAuth } from '@/lib/AuthContext';
 import clsx from 'clsx';
 
 interface DashboardProps {
@@ -20,6 +21,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNav,
   onAction,
 }) => {
+  const { user } = useAuth();
   return (
     <div className="bg-paper text-ink-900 min-h-screen">
       {/* Top Navigation */}
@@ -48,9 +50,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-ink-400">founder@caliai.co</span>
+          <span className="font-mono text-xs text-ink-400">{user?.email}</span>
           <div className="w-6.5 h-6.5 rounded-full bg-ink-900 text-paper text-xs font-semibold flex items-center justify-center">
-            f
+            {user?.email?.[0]?.toUpperCase() ?? '?'}
           </div>
         </div>
       </div>
@@ -292,7 +294,7 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
           <div>
             <h2 className="font-serif text-2xl letter-spacing-tight mb-2">Ready to verify</h2>
             <p className="text-sm text-ink-600 mb-5 leading-relaxed">
-              Pay €14.99 once. Your certificate is issued within seconds, and refreshed daily so
+              Your certificate is issued within seconds, and refreshed daily so
               your numbers stay current.
             </p>
             <div className="flex items-center gap-2.5">
