@@ -246,6 +246,9 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
       })
     : '—';
   const countryLabel = connection?.country ? connection.country.toUpperCase() : null;
+  const sparklineData = metrics
+    ? [metrics.mrr, metrics.mrr]
+    : [0, 0];
 
   return (
     <div className="space-y-6 mb-8">
@@ -279,7 +282,7 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({
             sub={loading ? 'Loading…' : metrics ? 'Active as of today' : 'Unavailable'}
           />
           <div className="flex-1 px-5 py-4.5 flex items-end">
-            <Sparkline data={metrics ? [metrics.mrr] : [0]} width={120} height={40} />
+            <Sparkline data={sparklineData} width={120} height={40} />
           </div>
         </div>
       </Card>

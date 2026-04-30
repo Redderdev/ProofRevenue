@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dashboard } from '@/components/screens/Dashboard';
 
@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 type DashboardState =
   | 'unconnected'
   | 'stripe_connected'
+  | 'stripe_error'
   | 'stripe_revoked_before_payment'
   | 'payment_pending'
   | 'data_pending'
@@ -18,6 +19,7 @@ type DashboardState =
 const allowedStates: DashboardState[] = [
   'unconnected',
   'stripe_connected',
+  'stripe_error',
   'stripe_revoked_before_payment',
   'payment_pending',
   'data_pending',
@@ -35,7 +37,63 @@ function getDashboardState(param: string | null): DashboardState {
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const state = getDashboardState(searchParams.get('state'));
+  const stateParam = searchParams.get('state');
+  const resolvedParamState = useMemo(
+    () => getDashboardState(stateParam),
+    [stateParam]
+  );
+  const [state, setState] = useState<DashboardState>(resolvedParamState);
+  const [loading, setLoading] = useState(stateParam === null);
+
+  useEffect(() => {
+    if (stateParam !== null) {
+      setState(resolvedParamState);
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    const loadState = async () => {
+      try {
+        const response = await fetch('/api/stripe/metrics', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!mounted) {
+          return;
+        }
+
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          setState(data.connection ? 'stripe_connected' : 'unconnected');
+          return;
+        }
+
+        if (response.status === 404) {
+          setState('unconnected');
+          return;
+        }
+
+        setState('stripe_error');
+      } catch (error) {
+        if (mounted) {
+          setState('stripe_error');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadState();
+
+    return () => {
+      mounted = false;
+    };
+  }, [resolvedParamState, stateParam]);
 
   const handleAction = (action: string) => {
     if (action === 'connect') {
@@ -58,6 +116,10 @@ function DashboardPageContent() {
     }
     router.push(`/dashboard?state=${state}`);
   };
+
+  if (loading) {
+    return <main className="min-h-screen bg-paper" />;
+  }
 
   return (
     <Dashboard
