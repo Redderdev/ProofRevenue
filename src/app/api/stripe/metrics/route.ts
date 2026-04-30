@@ -9,7 +9,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/auth-helpers-nextjs';
-import { getCachedMetrics, fetchAndCacheMetrics, getStripeConnectionSummary, shouldRefreshMetrics } from '@/lib/stripe-api';
+import { getCachedMetrics, fetchAndCacheMetrics, getStripeConnectionSummary, getStripeConnectStatus, shouldRefreshMetrics } from '@/lib/stripe-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +39,17 @@ export async function GET() {
 
     const userId = data.user.id;
     const connection = await getStripeConnectionSummary(userId);
+    const connectStatus = await getStripeConnectStatus(userId);
+
+    if (!connection) {
+      return NextResponse.json({
+        metrics: null,
+        connection: null,
+        connectStatus,
+        cached: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // Check if we need to refresh (cache older than 60 minutes)
     const needsRefresh = await shouldRefreshMetrics(userId, 60);
@@ -49,15 +60,19 @@ export async function GET() {
         const metrics = await fetchAndCacheMetrics(userId);
 
         if (!metrics) {
-          return NextResponse.json(
-            { error: 'No Stripe connection found' },
-            { status: 404 }
-          );
+          return NextResponse.json({
+            metrics: null,
+            connection,
+            connectStatus,
+            cached: true,
+            timestamp: new Date().toISOString(),
+          });
         }
 
         return NextResponse.json({
           metrics,
           connection,
+          connectStatus,
           cached: false,
           timestamp: new Date().toISOString(),
         });
@@ -70,6 +85,7 @@ export async function GET() {
           return NextResponse.json({
             metrics: cached,
             connection,
+            connectStatus,
             cached: true,
             error: 'Failed to refresh, returning cached data',
             timestamp: new Date().toISOString(),
@@ -89,6 +105,7 @@ export async function GET() {
     return NextResponse.json({
       metrics: cached,
       connection,
+      connectStatus,
       cached: true,
       timestamp: new Date().toISOString(),
     });

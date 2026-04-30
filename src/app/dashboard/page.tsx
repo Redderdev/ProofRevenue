@@ -67,11 +67,14 @@ function DashboardPageContent() {
 
         if (response.ok) {
           const data = await response.json().catch(() => ({}));
-          setState(data.connection ? 'stripe_connected' : 'unconnected');
-          return;
-        }
-
-        if (response.status === 404) {
+          if (data.connection) {
+            setState('stripe_connected');
+            return;
+          }
+          if (data.connectStatus?.failedAt) {
+            setState('stripe_error');
+            return;
+          }
           setState('unconnected');
           return;
         }

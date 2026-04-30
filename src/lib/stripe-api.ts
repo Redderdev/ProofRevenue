@@ -31,6 +31,11 @@ export interface StripeConnectionSummary {
   country?: string | null;
 }
 
+export interface StripeConnectStatus {
+  attemptedAt: string | null;
+  failedAt: string | null;
+}
+
 /**
  * Get Stripe API client for a specific connected account
  * Uses server-side encrypted tokens only
@@ -96,6 +101,38 @@ export const getStripeConnectionSummary = async (
       displayName: row.account_name,
       displayUrl: row.account_url,
       country: row.account_country,
+    };
+  } finally {
+    client.release();
+  }
+};
+
+export const getStripeConnectStatus = async (
+  userId: string
+): Promise<StripeConnectStatus> => {
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `SELECT stripe_connect_attempted_at, stripe_connect_failed_at
+       FROM users
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return { attemptedAt: null, failedAt: null };
+    }
+
+    const row = result.rows[0];
+
+    return {
+      attemptedAt: row.stripe_connect_attempted_at
+        ? row.stripe_connect_attempted_at.toISOString?.() ?? String(row.stripe_connect_attempted_at)
+        : null,
+      failedAt: row.stripe_connect_failed_at
+        ? row.stripe_connect_failed_at.toISOString?.() ?? String(row.stripe_connect_failed_at)
+        : null,
     };
   } finally {
     client.release();

@@ -11,6 +11,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/auth-helpers-nextjs';
 import { generateOAuthState, getStripeOAuthUrl, logOAuthEvent } from '@/lib/stripe-oauth';
+import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,20 @@ export async function GET() {
     }
 
     const userId = data.user.id;
+
+    const client = await pool.connect();
+    try {
+      await client.query(
+        `UPDATE users
+         SET stripe_connect_attempted_at = CURRENT_TIMESTAMP,
+             stripe_connect_failed_at = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [userId]
+      );
+    } finally {
+      client.release();
+    }
 
     // Generate secure state for CSRF protection
     const state = generateOAuthState(userId);

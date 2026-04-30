@@ -60,6 +60,8 @@ export const initializeDatabase = async () => {
         country VARCHAR(2),
         livemode BOOLEAN DEFAULT FALSE,
         connected_at TIMESTAMP,
+        stripe_connect_attempted_at TIMESTAMP,
+        stripe_connect_failed_at TIMESTAMP,
         is_active BOOLEAN DEFAULT TRUE,
         failed_login_attempts INTEGER DEFAULT 0,
         locked_until TIMESTAMP,

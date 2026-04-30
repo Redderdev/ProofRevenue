@@ -53,6 +53,21 @@ export async function GET(request: NextRequest) {
 
   const userId = data.user.id;
 
+  const markStripeFailed = async () => {
+    const client = await pool.connect();
+    try {
+      await client.query(
+        `UPDATE users
+         SET stripe_connect_failed_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [userId]
+      );
+    } finally {
+      client.release();
+    }
+  };
+
   // Handle user denial
   if (error) {
     console.warn('[OAuth Callback] User denied:', {
@@ -66,6 +81,8 @@ export async function GET(request: NextRequest) {
       error_description: errorDescription,
       success: false,
     });
+
+    await markStripeFailed();
 
     const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set('state', 'stripe_denied');
@@ -84,6 +101,8 @@ export async function GET(request: NextRequest) {
       success: false,
     });
 
+    await markStripeFailed();
+
     const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set('state', 'stripe_error');
     return NextResponse.redirect(redirectUrl, { status: 302 });
@@ -100,6 +119,8 @@ export async function GET(request: NextRequest) {
       reason: 'state_validation_failed',
       success: false,
     });
+
+    await markStripeFailed();
 
     const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set('state', 'stripe_error');
@@ -120,6 +141,8 @@ export async function GET(request: NextRequest) {
         error: String(error),
         success: false,
       });
+
+      await markStripeFailed();
 
       const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
       redirectUrl.searchParams.set('state', 'stripe_error');
@@ -222,6 +245,7 @@ export async function GET(request: NextRequest) {
        SET stripe_account_id = $2,
            livemode = $3,
            connected_at = CURRENT_TIMESTAMP,
+           stripe_connect_failed_at = NULL,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
       [userId, tokenResponse.stripe_user_id, tokenResponse.livemode]
@@ -250,6 +274,8 @@ export async function GET(request: NextRequest) {
       error: String(error),
       success: false,
     });
+
+    await markStripeFailed();
 
     const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set('state', 'stripe_error');
