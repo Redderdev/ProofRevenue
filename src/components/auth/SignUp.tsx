@@ -95,14 +95,8 @@ export function SignUp({ onSuccess, onSwitchToLogin }: SignUpProps) {
       }
 
       setSuccess(true);
-      setEmail('');
       setPassword('');
       setConfirmPassword('');
-
-      // Show success message then switch to login
-      setTimeout(() => {
-        onSuccess?.();
-      }, 1500);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -117,9 +111,23 @@ export function SignUp({ onSuccess, onSwitchToLogin }: SignUpProps) {
         <p className="text-ink-400 text-sm mb-6">Join ProofRevenue and verify your revenue</p>
 
         {success ? (
-          <div className="p-4 bg-emerald-soft border border-emerald rounded-lg text-center">
-            <p className="text-emerald-ink font-medium">Account created successfully!</p>
-            <p className="text-emerald-ink text-sm mt-1">Redirecting to login...</p>
+          <div className="space-y-4">
+            <div className="p-4 bg-emerald-soft border border-emerald rounded-lg text-center">
+              <p className="text-emerald-ink font-medium text-lg">Check your inbox</p>
+              <p className="text-emerald-ink text-sm mt-2">
+                We sent a confirmation link to <strong>{email}</strong>.
+                Click it to activate your account.
+              </p>
+              <p className="text-emerald-ink text-xs mt-2 opacity-70">
+                Don&apos;t see it? Check your spam folder.
+              </p>
+            </div>
+            <button
+              onClick={onSuccess}
+              className="w-full text-sm text-ink-600 hover:text-ink-900 underline"
+            >
+              Already confirmed? Sign in
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

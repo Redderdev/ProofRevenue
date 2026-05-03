@@ -80,7 +80,13 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.error('Login error:', error);
 
-      // Generic error message (prevents user enumeration)
+      if (error.message?.includes('Email not confirmed')) {
+        return NextResponse.json(
+          { error: 'Email not confirmed. Please check your inbox and click the confirmation link.' },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
