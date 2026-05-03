@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Failed to create account', detail: error?.message || String(error) },
+        { error: 'Failed to create account' },
         { status: 400 }
       );
     }
