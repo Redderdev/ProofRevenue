@@ -83,19 +83,20 @@ export async function POST(request: NextRequest) {
             price_data: {
               currency: 'eur',
               product_data: {
-                name: 'Verified Revenue Certificate',
+                name: 'ProofRevenue — Live Certificate',
                 description:
-                  'One-time certificate verifying your Stripe revenue — MRR, ARR, and customer count.',
+                  'Verified revenue certificate refreshed monthly. MRR, ARR, and active customers. Cancel anytime.',
               },
-              unit_amount: 1499,
+              unit_amount: 900,
+              recurring: { interval: 'month' },
             },
             quantity: 1,
           },
         ],
-        mode: 'payment',
-        metadata: {
-          certificateId,
-          userId,
+        mode: 'subscription',
+        metadata: { certificateId, userId },
+        subscription_data: {
+          metadata: { certificateId, userId },
         },
         success_url: `${origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/dashboard`,
