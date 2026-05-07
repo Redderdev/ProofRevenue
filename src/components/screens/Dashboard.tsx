@@ -501,6 +501,11 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
       ? new Date(certificate.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '—';
 
+  const fmtEur = (cents: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100);
+
+  const hasMrr = certificate?.mrr != null;
+
   const copyLink = () => {
     if (certLink) navigator.clipboard?.writeText(certLink);
     setCopied(true);
@@ -508,25 +513,88 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
   };
 
   return (
-    <Card className="p-5 sm:p-7 mb-8">
-      <div className="flex items-start sm:items-center gap-2.5 mb-4">
-        <Icon name="shield-check" size={16} color="oklch(0.62 0.14 158)" />
-        <span className="font-mono text-xs letter-spacing-wide text-emerald-ink uppercase leading-relaxed">
-          CERTIFICATE ACTIVE · VERIFIED {verifiedLabel.toUpperCase()}
-        </span>
-      </div>
-      <div className="flex items-center gap-3 p-2.5 border border-line rounded bg-paper-alt">
-        <Icon name="link" size={14} color="var(--ink-400)" />
-        <span className="font-mono text-sm flex-1 truncate">{certLink || '—'}</span>
-        <Button variant="ghost" size="sm" onClick={copyLink} disabled={!certLink}>
-          {copied ? (
-            <><Icon name="check" size={12} color="oklch(0.62 0.14 158)" />Copied</>
-          ) : (
-            <><Icon name="copy" size={12} />Copy</>
-          )}
-        </Button>
-      </div>
-    </Card>
+    <div className="space-y-4 mb-8">
+      {/* Verified header + link */}
+      <Card className="overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-line flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Icon name="shield-check" size={16} color="oklch(0.62 0.14 158)" />
+            <span className="font-mono text-xs letter-spacing-wide text-emerald-ink uppercase leading-relaxed truncate">
+              CERTIFICATE ACTIVE · VERIFIED {verifiedLabel.toUpperCase()}
+            </span>
+          </div>
+          <Pill tone="emerald">Live</Pill>
+        </div>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center gap-3 p-2.5 border border-line rounded bg-paper-alt">
+            <Icon name="link" size={14} color="var(--ink-400)" />
+            <span className="font-mono text-sm flex-1 truncate">{certLink || '—'}</span>
+            <Button variant="ghost" size="sm" onClick={copyLink} disabled={!certLink}>
+              {copied ? (
+                <><Icon name="check" size={12} color="oklch(0.62 0.14 158)" />Copied</>
+              ) : (
+                <><Icon name="copy" size={12} />Copy</>
+              )}
+            </Button>
+          </div>
+          <p className="font-mono text-xs text-ink-400 mt-2.5">
+            Share this link with investors, buyers, or press. Data refreshes monthly.
+          </p>
+        </div>
+      </Card>
+
+      {/* Verified metrics */}
+      <Card className="overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-line">
+          <p className="font-mono text-xs letter-spacing-wide text-ink-400 uppercase">Verified revenue snapshot</p>
+        </div>
+
+        {/* Mobile: 2×2 grid */}
+        <div className="grid grid-cols-2 md:hidden divide-x divide-y divide-line">
+          <div className="px-4 py-4">
+            <div className="font-mono text-xs text-ink-400 mb-1">MRR</div>
+            <div className="font-serif text-2xl text-ink-900">
+              {hasMrr ? fmtEur(certificate!.mrr!) : '—'}
+            </div>
+          </div>
+          <div className="px-4 py-4">
+            <div className="font-mono text-xs text-ink-400 mb-1">ARR</div>
+            <div className="font-serif text-2xl text-ink-900">
+              {certificate?.arr != null ? fmtEur(certificate.arr) : '—'}
+            </div>
+          </div>
+          <div className="px-4 py-4 col-span-2">
+            <div className="font-mono text-xs text-ink-400 mb-1">ACTIVE CUSTOMERS</div>
+            <div className="font-serif text-2xl text-ink-900">
+              {certificate?.customers != null
+                ? new Intl.NumberFormat('en-US').format(certificate.customers)
+                : '—'}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop: flex row */}
+        <div className="hidden md:flex">
+          <Metric
+            label="MRR (verified)"
+            value={hasMrr ? fmtEur(certificate!.mrr!) : '—'}
+            sub="Monthly recurring revenue"
+          />
+          <Metric
+            label="ARR (verified)"
+            value={certificate?.arr != null ? fmtEur(certificate.arr) : '—'}
+            sub="MRR × 12"
+          />
+          <Metric
+            label="Customers"
+            value={certificate?.customers != null
+              ? new Intl.NumberFormat('en-US').format(certificate.customers)
+              : '—'}
+            sub="Active as of verified date"
+          />
+        </div>
+      </Card>
+    </div>
   );
 };
 
