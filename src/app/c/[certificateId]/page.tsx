@@ -52,7 +52,7 @@ export default async function PublicCertificatePage({
          sc.stripe_user_id
        FROM certificates c
        JOIN stripe_connections sc ON sc.user_id = c.user_id
-       WHERE c.id = $1 AND c.is_public = true`,
+       WHERE c.id = $1 AND c.is_public = true AND c.is_active = true`,
       [certificateId]
     );
     if (result.rows.length === 0) notFound();

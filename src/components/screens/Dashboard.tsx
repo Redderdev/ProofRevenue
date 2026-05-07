@@ -161,6 +161,7 @@ const DashboardBody: React.FC<{
   if (state === 'stripe_connected') return <StateConnected onAction={onAction} />;
   if (state === 'stripe_revoked_before_payment') return <StateRevokedPre onAction={onAction} />;
   if (state === 'payment_pending') return <StatePaymentPending />;
+  if (state === 'payment_abandoned') return <StatePaymentAbandoned onAction={onAction} />;
   if (state === 'data_pending') return <StateDataPending />;
   if (state === 'certificate_active') return <StateActive certificate={certificate} />;
   if (state === 'stripe_revoked_after_payment') return <StateRevokedPost />;
@@ -406,6 +407,33 @@ const StatePaymentPending: React.FC = () => (
       We&apos;re waiting on Stripe to confirm your payment. This page updates automatically.
     </p>
     <div className="font-mono text-xs text-ink-400">€9.00/month · processing</div>
+  </Card>
+);
+
+const StatePaymentAbandoned: React.FC<{ onAction?: (action: string) => void }> = ({ onAction }) => (
+  <Card className="overflow-hidden mb-8">
+    <div className="px-6 py-4 bg-amber-soft border-b border-line flex items-center gap-3">
+      <Icon name="warn" size={16} color="oklch(0.45 0.13 75)" />
+      <div className="text-sm text-amber-900">Payment not completed — your spot is still reserved.</div>
+    </div>
+    <div className="p-6 sm:p-8">
+      <h2 className="font-serif text-2xl letter-spacing-tight mb-2">Didn&apos;t finish subscribing?</h2>
+      <p className="text-sm text-ink-600 mb-6 max-w-lg leading-relaxed">
+        You started the subscription but didn&apos;t complete it. You can pick up where you left off,
+        or cancel and start fresh. No charge has been made.
+      </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <Button variant="primary" onClick={() => onAction?.('pay')}>
+          Complete subscription · €9/month
+        </Button>
+        <button
+          onClick={() => onAction?.('cancel_draft')}
+          className="text-sm text-ink-400 hover:text-ink-600 transition-colors"
+        >
+          Cancel and start over
+        </button>
+      </div>
+    </div>
   </Card>
 );
 

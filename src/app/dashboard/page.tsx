@@ -12,6 +12,7 @@ type DashboardState =
   | 'stripe_error'
   | 'stripe_revoked_before_payment'
   | 'payment_pending'
+  | 'payment_abandoned'
   | 'data_pending'
   | 'certificate_active'
   | 'stripe_revoked_after_payment';
@@ -32,6 +33,8 @@ function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentSuccess = searchParams.get('payment') === 'success';
+
+  const paymentCancelled = searchParams.get('payment') === 'cancelled';
 
   const [state, setState] = useState<DashboardState>(
     paymentSuccess ? 'payment_pending' : 'unconnected'
@@ -77,12 +80,38 @@ function DashboardPageContent() {
   useEffect(() => {
     let mounted = true;
 
+    const cancelDraft = () =>
+      fetch('/api/certificate/cancel-draft', { method: 'POST', credentials: 'include' }).catch(() => {});
+
+    const loadStripeConnection = async () => {
+      const metricsRes = await fetch('/api/stripe/metrics', { credentials: 'include' });
+      if (!mounted) return;
+      if (metricsRes.ok) {
+        const data = await metricsRes.json().catch(() => ({}));
+        if (data.connection) { setState('stripe_connected'); return; }
+        if (data.connectStatus?.failedAt) { setState('stripe_error'); return; }
+      }
+      setState('unconnected');
+    };
+
     const loadState = async () => {
       try {
-        // First check if there's already a certificate for this user
         const certRes = await fetch('/api/certificate/status', { credentials: 'include' });
         if (certRes.ok) {
           const { certificate: cert } = await certRes.json();
+
+          if (cert?.status === 'draft') {
+            if (paymentCancelled) {
+              // User clicked Cancel on Stripe — silently clean up and show connect state
+              await cancelDraft();
+              await loadStripeConnection();
+            } else {
+              // User navigated back manually — show recovery UI, don't auto-cancel
+              if (mounted) setState('payment_abandoned');
+            }
+            return;
+          }
+
           const certState = certRowToState(cert);
           if (certState && mounted) {
             setState(certState);
@@ -94,32 +123,12 @@ function DashboardPageContent() {
               arr: cert.arr,
               customers: cert.customers,
             });
-            if (certState === 'payment_pending' || certState === 'data_pending') {
-              startPolling();
-            }
+            if (certState === 'data_pending') startPolling();
             return;
           }
         }
 
-        // No certificate — check Stripe connection
-        const metricsRes = await fetch('/api/stripe/metrics', { credentials: 'include' });
-        if (!mounted) return;
-
-        if (metricsRes.ok) {
-          const data = await metricsRes.json().catch(() => ({}));
-          if (data.connection) {
-            setState('stripe_connected');
-            return;
-          }
-          if (data.connectStatus?.failedAt) {
-            setState('stripe_error');
-            return;
-          }
-          setState('unconnected');
-          return;
-        }
-
-        setState('stripe_error');
+        await loadStripeConnection();
       } catch {
         if (mounted) setState('stripe_error');
       } finally {
@@ -128,7 +137,7 @@ function DashboardPageContent() {
     };
 
     if (paymentSuccess) {
-      // Stripe redirected back after payment — start polling immediately
+      // Stripe redirected back after successful payment — start polling for webhook
       setLoading(false);
       startPolling();
     } else {
@@ -142,13 +151,18 @@ function DashboardPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAction = (action: string) => {
+  const handleAction = async (action: string) => {
     if (action === 'connect') {
       router.push('/connect/stripe');
       return;
     }
     if (action === 'pay') {
       router.push('/checkout');
+      return;
+    }
+    if (action === 'cancel_draft') {
+      await fetch('/api/certificate/cancel-draft', { method: 'POST', credentials: 'include' });
+      router.replace('/dashboard');
     }
   };
 

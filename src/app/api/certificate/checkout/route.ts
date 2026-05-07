@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           metadata: { certificateId, userId },
         },
         success_url: `${origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/dashboard`,
+        cancel_url: `${origin}/dashboard?payment=cancelled`,
       });
 
       return NextResponse.json({ url: session.url });
