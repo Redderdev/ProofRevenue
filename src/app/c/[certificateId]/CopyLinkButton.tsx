@@ -14,20 +14,7 @@ export default function CopyLinkButton({ url }: { url: string }) {
   return (
     <button
       onClick={copy}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 12px',
-        fontSize: 11,
-        fontFamily: 'var(--font-mono, monospace)',
-        letterSpacing: '0.06em',
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.12)',
-        borderRadius: 6,
-        color: '#F6F4EE',
-        cursor: 'pointer',
-      }}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
     >
       {copied ? '✓ Copied' : '⎘ Copy link'}
     </button>

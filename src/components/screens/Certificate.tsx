@@ -1,219 +1,309 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
-import { Logo, Sparkline } from '@/components/Common';
-import { eur, num } from '@/lib/utils';
+import { Logo, Card } from '@/components/Common';
+import { eur, num, maskStripeId } from '@/lib/utils';
 
 interface CertificatePageProps {
-  revoked?: boolean;
   onNav?: (screen: string) => void;
 }
 
-export const CertificatePage: React.FC<CertificatePageProps> = ({ revoked = false }) => {
+interface CertData {
+  id: string;
+  status: string;
+  data_status: string;
+  is_active: boolean;
+  issued_at: string | null;
+  verified_at: string | null;
+  mrr: number | null;
+  arr: number | null;
+  customers: number | null;
+}
+
+interface ConnData {
+  stripeUserId: string;
+  livemode: boolean;
+  connectedAt: string;
+  displayName?: string | null;
+  displayUrl?: string | null;
+  country?: string | null;
+}
+
+function fmtDatetime(d: string | null): string {
+  if (!d) return '—';
+  const date = new Date(d);
+  return (
+    date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' · ' +
+    date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) +
+    ' UTC'
+  );
+}
+
+export const CertificatePage: React.FC<CertificatePageProps> = ({ onNav }) => {
+  const [cert, setCert] = useState<CertData | null | undefined>(undefined);
+  const [conn, setConn] = useState<ConnData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const mockData = {
-    name: 'caliAi',
-    domain: 'caliai.co',
-    certificateId: 'cal9x2f4kn',
-    mrr: 48720,
-    arr: 584640,
-    customers: 1284,
-    issuedAt: 'Apr 23, 2026',
-    verifiedAt: '2026-04-23 09:41 UTC',
-    country: 'IE',
-    livemode: true,
-    mrrHistory: [18200, 21900, 24300, 27800, 31200, 34600, 38100, 41900, 44800, 46500, 47200, 48720],
-  };
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
-  const certUrl = `https://proof.revenue/c/${mockData.certificateId}`;
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const [certRes, metricsRes] = await Promise.all([
+          fetch('/api/certificate/status', { credentials: 'include' }),
+          fetch('/api/stripe/metrics', { credentials: 'include' }),
+        ]);
+        const certData = await certRes.json().catch(() => ({}));
+        const metricsData = await metricsRes.json().catch(() => ({}));
+        if (!mounted) return;
+        setCert(certData.certificate ?? null);
+        setConn(metricsData.connection ?? null);
+      } catch {
+        if (mounted) setCert(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const certUrl = cert?.id ? `${appUrl}/c/${cert.id}` : '';
 
   const copy = () => {
-    navigator.clipboard?.writeText(certUrl);
+    if (certUrl) navigator.clipboard?.writeText(certUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
-  return (
-    <div className="bg-ink-950 text-paper min-h-screen font-sans">
-      {/* Top bar */}
-      <div className="px-8 py-4 flex justify-between items-center border-b border-white border-opacity-10">
-        <Logo tone="paper" size={14} />
-        <div className="flex items-center gap-3.5">
-          <span className="font-mono text-xs text-ink-300">
-            proof.revenue/c/{mockData.certificateId}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="bg-white bg-opacity-10 border-white border-opacity-20 hover:bg-white hover:bg-opacity-20"
-            onClick={copy}
-          >
-            {copied ? (
-              <>
-                <Icon name="check" size={12} color="white" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Icon name="link" size={12} color="white" />
-                Copy link
-              </>
-            )}
+  const companyName = conn?.displayName?.trim()
+    ? conn.displayName
+    : conn?.displayUrl
+      ? new URL(conn.displayUrl).hostname.replace(/^www\./, '')
+      : conn?.stripeUserId
+        ? maskStripeId(conn.stripeUserId)
+        : 'Your business';
+
+  const domain = conn?.displayUrl
+    ? new URL(conn.displayUrl).hostname.replace(/^www\./, '')
+    : null;
+
+  // Loading
+  if (loading) {
+    return (
+      <div className="bg-paper min-h-screen flex items-center justify-center">
+        <div className="font-mono text-xs text-ink-400 animate-pulse">Loading certificate…</div>
+      </div>
+    );
+  }
+
+  // No certificate
+  if (!cert) {
+    return (
+      <div className="bg-paper min-h-screen px-4 sm:px-8 py-16">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="w-12 h-12 rounded-full bg-line flex items-center justify-center mx-auto mb-5">
+            <Icon name="shield-check" size={20} color="var(--ink-400)" />
+          </div>
+          <h2 className="font-serif text-2xl tracking-tight mb-2">No certificate yet</h2>
+          <p className="text-sm text-ink-600 leading-relaxed mb-6">
+            You haven&apos;t issued a verified certificate. Connect Stripe and subscribe to get one.
+          </p>
+          <Button variant="primary" onClick={() => onNav?.('dashboard')}>
+            Go to dashboard
           </Button>
         </div>
       </div>
+    );
+  }
 
-      {/* Revocation banner */}
-      {revoked && (
-        <div className="px-8 py-2.5 bg-amber-900 border-b border-amber-800 flex items-center gap-2.5 justify-center">
-          <Icon name="warn" size={14} color="oklch(0.92 0.10 85)" />
-          <span className="text-sm text-amber-100">
-            Revenue data pending re-verification · last verified Apr 22, 2026
+  // Data pending
+  if (!cert.is_active || cert.data_status === 'pending') {
+    return (
+      <div className="bg-paper min-h-screen px-4 sm:px-8 py-16">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-soft flex items-center justify-center mx-auto mb-5">
+            <div className="w-2 h-2 rounded-full bg-amber animate-pulse" />
+          </div>
+          <h2 className="font-serif text-2xl tracking-tight mb-2">Verifying your revenue</h2>
+          <p className="text-sm text-ink-600 leading-relaxed mb-2">
+            Your certificate was issued. Revenue data is being pulled from Stripe — this takes a few minutes.
+          </p>
+          <p className="font-mono text-xs text-ink-400">CERT ID: {cert.id}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Active certificate — show real data
+  const verifiedAt = cert.verified_at || cert.issued_at;
+  const twitterText = encodeURIComponent('Our revenue is independently verified — check the certificate:');
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${twitterText}&url=${encodeURIComponent(certUrl)}`;
+  const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(certUrl)}`;
+
+  return (
+    <div className="bg-paper min-h-screen font-sans overflow-x-hidden">
+      {/* Top bar */}
+      <div className="border-b border-line px-4 sm:px-8 py-4 flex items-center justify-between bg-white">
+        <Logo size={14} />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="hidden sm:block font-mono text-xs text-ink-400">
+            {certUrl.replace(/^https?:\/\//, '')}
+          </span>
+          <button
+            onClick={copy}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
+          >
+            {copied ? '✓ Copied' : '⎘ Copy link'}
+          </button>
+          {certUrl && (
+            <a
+              href={certUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
+            >
+              View public
+              <Icon name="external" size={10} color="var(--ink-400)" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-2xl mx-auto px-4 sm:px-8 py-10 sm:py-14">
+
+        {/* Company header */}
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-soft border border-emerald rounded-full mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald" />
+            <span className="font-mono text-xs text-emerald-ink">
+              Certificate active · {conn?.livemode ? 'LIVEMODE' : 'TESTMODE'}
+            </span>
+          </div>
+          <h1 className="font-serif text-4xl sm:text-5xl leading-tight tracking-tight mb-1">
+            {companyName}
+          </h1>
+          {domain && <p className="font-mono text-sm text-ink-400 mb-4">{domain}</p>}
+          <p className="text-sm text-ink-600 leading-relaxed max-w-lg">
+            Revenue independently verified against Stripe, snapshotted on{' '}
+            <span className="text-ink-900 font-medium">{fmtDatetime(verifiedAt)}</span>.
+          </p>
+        </div>
+
+        {/* MRR hero card */}
+        <Card className="p-6 sm:p-8 mb-4">
+          <div className="font-mono text-xs text-ink-400 uppercase tracking-widest mb-3">
+            Monthly Recurring Revenue
+          </div>
+          <div className="font-serif text-5xl sm:text-6xl leading-none tracking-tight">
+            {cert.mrr != null ? eur(cert.mrr / 100) : '—'}
+          </div>
+        </Card>
+
+        {/* ARR + Customers */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+          <Card className="p-5 sm:p-6">
+            <div className="font-mono text-xs text-ink-400 uppercase tracking-widest mb-2">Annual Recurring</div>
+            <div className="font-serif text-2xl sm:text-3xl leading-tight tracking-tight">
+              {cert.arr != null ? eur(cert.arr / 100) : '—'}
+            </div>
+            <div className="font-mono text-xs text-ink-400 mt-2">MRR × 12</div>
+          </Card>
+          <Card className="p-5 sm:p-6">
+            <div className="font-mono text-xs text-ink-400 uppercase tracking-widest mb-2">Active Customers</div>
+            <div className="font-serif text-2xl sm:text-3xl leading-tight tracking-tight">
+              {cert.customers != null ? num(cert.customers) : '—'}
+            </div>
+            <div className="font-mono text-xs text-ink-400 mt-2">With paid subscriptions</div>
+          </Card>
+        </div>
+
+        {/* Verification timestamp */}
+        <div className="flex items-center gap-2.5 py-3 px-4 bg-white border border-line rounded-xl mb-6 overflow-hidden">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald flex-shrink-0" />
+          <span className="font-mono text-xs text-ink-600 truncate">
+            Verified {fmtDatetime(verifiedAt)} · refreshes monthly
           </span>
         </div>
-      )}
 
-      {/* Certificate card */}
-      <div className="px-6 py-15 flex justify-center">
-        <div className="w-full max-w-2xl relative">
-          {/* Seal badge */}
-          <div className="absolute -top-7 -right-7 w-27 h-27 rounded-full bg-paper text-ink-900 flex flex-col items-center justify-center shadow-2xl border border-line transform rotate-2">
-            <Icon name="shield-check" size={22} color="oklch(0.62 0.14 158)" />
-            <div className="font-mono text-xs mt-1 letter-spacing-wide">VERIFIED</div>
-            <div className="font-mono text-xs letter-spacing-wide text-ink-400">APR 2026</div>
-          </div>
-
-          {/* Main card */}
-          <div className="bg-blue-950 border border-white border-opacity-10 rounded-2xl overflow-hidden shadow-2xl">
-            {/* Header */}
-            <div className="px-10 py-9 border-b border-white border-opacity-10">
-              <div className="flex items-center justify-between mb-8">
-                <div className="font-mono text-xs letter-spacing-wide text-ink-300 uppercase">
-                  REVENUE CERTIFICATE · ID {mockData.certificateId.toUpperCase()}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Icon name="stripe-s" size={12} color="rgba(255,255,255,0.5)" />
-                  <span className="font-mono text-xs letter-spacing-wide text-ink-300">
-                    VIA STRIPE · LIVEMODE
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-end gap-4.5">
-                <div>
-                  <div className="font-mono text-xs letter-spacing-wide text-ink-300 mb-2">This certifies that</div>
-                  <div className="font-serif text-7xl letter-spacing-tight text-paper leading-none">
-                    {mockData.name}
-                  </div>
-                </div>
-                <div className="pb-1.5">
-                  <span className="font-mono text-sm text-ink-300">{mockData.domain}</span>
-                </div>
-              </div>
-
-              <div className="mt-4.5 text-base leading-relaxed text-ink-200 max-w-xl">
-                …has its revenue independently verified against Stripe, with the following figures
-                snapshotted on <span className="text-paper">{mockData.verifiedAt}</span>.
-              </div>
-            </div>
-
-            {/* Metrics */}
-            <div className="grid grid-cols-2">
-              <div className="px-10 py-7 border-r border-b border-white border-opacity-10">
-                <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-300 uppercase mb-2">
-                  MRR · MONTHLY RECURRING
-                </div>
-                <div className="font-serif text-5xl letter-spacing-tight text-paper leading-none mb-2.5">
-                  {eur(mockData.mrr)}
-                </div>
-                <div className="mt-2.5">
-                  <Sparkline
-                    data={mockData.mrrHistory}
-                    width={200}
-                    height={36}
-                    color="oklch(0.62 0.14 158)"
-                  />
-                </div>
-              </div>
-
-              <div className="px-10 py-7 border-b border-white border-opacity-10">
-                <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-300 uppercase mb-2">
-                  ARR · ANNUAL RECURRING
-                </div>
-                <div className="font-serif text-5xl letter-spacing-tight text-paper leading-none mb-2.5">
-                  {eur(mockData.arr)}
-                </div>
-                <div className="font-mono text-xs text-ink-300 mt-4 letter-spacing-normal">MRR × 12</div>
-              </div>
-
-              <div className="px-10 py-5.5 border-r border-white border-opacity-10">
-                <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-300 uppercase mb-1.5">
-                  ACTIVE CUSTOMERS
-                </div>
-                <div className="font-serif text-3xl letter-spacing-tight text-paper">
-                  {num(mockData.customers)}
-                </div>
-              </div>
-
-              <div className="px-10 py-5.5">
-                <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-300 uppercase mb-1.5">
-                  CERTIFICATE ISSUED
-                </div>
-                <div className="font-serif text-3xl letter-spacing-tight text-paper">
-                  {mockData.issuedAt}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer strip */}
-            <div className="px-10 py-4 border-t border-white border-opacity-10 flex items-center justify-between bg-white bg-opacity-5">
-              <div className="flex items-center gap-4">
-                <Logo tone="paper" size={12} />
-                <span className="font-mono text-xs letter-spacing-wide text-ink-300">
-                  proof.revenue/c/{mockData.certificateId}
-                </span>
-              </div>
-              <div className="flex gap-4 items-center">
-                <span className="font-mono text-xs letter-spacing-wide text-ink-300">
-                  COUNTRY: {mockData.country} · LIVEMODE: {mockData.livemode ? 'TRUE' : 'FALSE'}
-                </span>
-                <span className="font-mono text-xs letter-spacing-wide text-ink-300">
-                  FETCHED {mockData.verifiedAt.toUpperCase()}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Share buttons */}
-          <div className="mt-6 flex gap-2.5 justify-center">
-            <Button variant="ghost" size="sm" className="bg-white bg-opacity-10 hover:bg-opacity-20">
-              <Icon name="copy" size={12} color="white" />
-              Embed badge
-            </Button>
-            <Button variant="ghost" size="sm" className="bg-white bg-opacity-10 hover:bg-opacity-20">
-              Share on X
-            </Button>
-            <Button variant="ghost" size="sm" className="bg-white bg-opacity-10 hover:bg-opacity-20">
-              Share on LinkedIn
-            </Button>
-          </div>
-
-          {/* Explanation strip */}
-          <div className="mt-12 p-6 bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl">
-            <div className="font-mono text-xs letter-spacing-wide text-ink-300 uppercase mb-2.5">
-              How this is verified
-            </div>
-            <div className="text-sm text-ink-200 leading-relaxed">
-              ProofRevenue reads revenue data directly from Stripe using read-only access to account
-              <span className="font-mono text-paper"> acct_1QrXz4···kpLm</span>. The figures above are
-              the most recent snapshot written by the daily cron at 03:00 UTC. The url on this page is
-              stable and re-renders from live database state on every request.
-            </div>
-          </div>
+        {/* Share row */}
+        <div className="flex flex-wrap gap-2 mb-10">
+          <button
+            onClick={copy}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
+          >
+            {copied ? '✓ Copied' : '⎘ Copy link'}
+          </button>
+          <a
+            href={twitterUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
+          >
+            Share on X
+          </a>
+          <a
+            href={linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg border border-line bg-white hover:bg-paper-alt transition-colors text-ink-700"
+          >
+            Share on LinkedIn
+          </a>
         </div>
+
+        {/* Certificate details */}
+        <Card className="p-5 sm:p-6">
+          <div className="font-mono text-xs text-ink-400 uppercase tracking-widest mb-3">
+            Certificate details
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-600">Certificate ID</span>
+              <span className="font-mono">{cert.id}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-600">Issued</span>
+              <span className="font-mono text-xs">{fmtDatetime(cert.issued_at)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-600">Last verified</span>
+              <span className="font-mono text-xs">{fmtDatetime(cert.verified_at)}</span>
+            </div>
+            {conn?.stripeUserId && (
+              <div className="flex justify-between text-sm">
+                <span className="text-ink-600">Stripe account</span>
+                <span className="font-mono">{maskStripeId(conn.stripeUserId)}</span>
+              </div>
+            )}
+            {conn?.country && (
+              <div className="flex justify-between text-sm">
+                <span className="text-ink-600">Country</span>
+                <span className="font-mono">{conn.country.toUpperCase()}</span>
+              </div>
+            )}
+          </div>
+          {certUrl && (
+            <div className="mt-4 pt-4 border-t border-line">
+              <a
+                href={certUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-ink-600 hover:text-ink-900 transition-colors"
+              >
+                <Icon name="external" size={12} color="currentColor" />
+                View public certificate page
+              </a>
+            </div>
+          )}
+        </Card>
+
       </div>
     </div>
   );
