@@ -24,53 +24,35 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
   return (
     <div className="bg-paper text-ink-900 font-sans">
       {/* Top nav */}
-      <div className="flex items-center justify-between px-12 py-5 border-b border-line">
+      <div className="flex items-center justify-between px-4 md:px-12 py-5 border-b border-line">
         <Logo />
-        <div className="flex items-center gap-7">
-          <a href="#" className="text-sm text-ink-600 hover:text-ink-900">
-            How it works
-          </a>
-          <a href="#" className="text-sm text-ink-600 hover:text-ink-900">
-            Example
-          </a>
-          <a href="#" className="text-sm text-ink-600 hover:text-ink-900">
-            Pricing
-          </a>
-          <a href="#" className="text-sm text-ink-600 hover:text-ink-900">
-            FAQ
-          </a>
-          
-          {/* Auth buttons */}
+        <div className="flex items-center gap-4 md:gap-7">
+          <nav className="hidden md:flex items-center gap-7">
+            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">How it works</a>
+            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">Example</a>
+            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">Pricing</a>
+            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">FAQ</a>
+          </nav>
+
           {isAuthenticated && user ? (
             <>
-              <span className="text-sm text-ink-600 font-medium">
-                {user.email}
-              </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-              >
+              <span className="hidden sm:block text-sm text-ink-600 font-medium">{user.email}</span>
+              <Button variant="ghost" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
                 {isLoggingOut ? 'Signing out...' : 'Sign out'}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={onSignIn}>
-                Sign in
-              </Button>
-              <Button variant="primary" size="sm" onClick={onStart}>
-                Get verified
-              </Button>
+              <Button variant="ghost" size="sm" onClick={onSignIn}>Sign in</Button>
+              <Button variant="primary" size="sm" onClick={onStart}>Get verified</Button>
             </>
           )}
         </div>
       </div>
 
       {/* Hero */}
-      <div className="px-12 py-20 max-w-screen-2xl mx-auto">
-        <div className="grid grid-cols-2 gap-16 items-center">
+      <div className="px-4 md:px-12 py-12 md:py-20 max-w-screen-2xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-line rounded-full bg-white mb-6">
@@ -81,22 +63,22 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             </div>
 
             {/* Headline */}
-            <h1 className="font-serif text-6xl letter-spacing-tight mt-6 mb-5 leading-tight">
+            <h1 className="font-serif text-4xl md:text-6xl letter-spacing-tight mt-6 mb-5 leading-tight">
               Prove your revenue.
               <br />
               <span className="italic text-ink-600">Not a screenshot.</span>
             </h1>
 
             {/* Description */}
-            <p className="text-lg leading-relaxed text-ink-600 max-w-lg mb-8">
+            <p className="text-base md:text-lg leading-relaxed text-ink-600 max-w-lg mb-8">
               Connect Stripe. We pull MRR, ARR and customer count straight from the source,
               then issue a verified public link you can share with investors, buyers and press.
             </p>
 
             {/* CTA buttons */}
-            <div className="flex gap-3 mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <Button variant="primary" size="lg" onClick={onStart}>
-                Get verified — €14.99
+                Get verified — €9/mo
                 <Icon name="arrow-right" size={16} color="white" />
               </Button>
               <Button variant="ghost" size="lg">
@@ -106,33 +88,35 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             </div>
 
             {/* Trust signals */}
-            <div className="flex items-center gap-5">
-              <span className="font-mono text-xs text-ink-400">ONE-TIME PAYMENT</span>
-              <span className="w-px h-3 bg-line" />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="font-mono text-xs text-ink-400">€9/MONTH</span>
+              <span className="hidden sm:block w-px h-3 bg-line" />
+              <span className="font-mono text-xs text-ink-400">CANCEL ANYTIME</span>
+              <span className="hidden sm:block w-px h-3 bg-line" />
               <span className="font-mono text-xs text-ink-400">NO STRIPE TOKENS STORED</span>
-              <span className="w-px h-3 bg-line" />
+              <span className="hidden sm:block w-px h-3 bg-line" />
               <span className="font-mono text-xs text-ink-400">LIVE-MODE ONLY</span>
             </div>
           </div>
 
           {/* Mini certificate preview */}
-          <div>
+          <div className="hidden lg:block">
             <MiniCertPreview />
           </div>
         </div>
       </div>
 
       {/* How it works */}
-      <div className="px-12 py-20 border-t border-line bg-paper-alt">
+      <div className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
         <div className="max-w-screen-2xl mx-auto">
           <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-400 uppercase mb-4">
             How it works
           </div>
-          <h2 className="font-serif text-4xl letter-spacing-tight mb-12 max-w-2xl leading-tight">
+          <h2 className="font-serif text-2xl md:text-4xl letter-spacing-tight mb-10 md:mb-12 max-w-2xl leading-tight">
             Four steps from signup to a shareable link.
           </h2>
 
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 n: '01',
@@ -141,8 +125,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
               },
               {
                 n: '02',
-                t: 'Pay €14.99 once',
-                d: 'A single Stripe Checkout charge. No subscription, no hidden fees.',
+                t: 'Subscribe — €9/mo',
+                d: 'One Stripe Checkout. Cancel anytime. Certificate refreshes every month.',
               },
               {
                 n: '03',
@@ -166,8 +150,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       </div>
 
       {/* Trust row */}
-      <div className="px-12 py-14 border-t border-line">
-        <div className="max-w-screen-2xl mx-auto grid grid-cols-3 gap-8">
+      <div className="px-4 md:px-12 py-10 md:py-14 border-t border-line">
+        <div className="max-w-screen-2xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
           {[
             {
               i: 'shield-check',
@@ -181,8 +165,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             },
             {
               i: 'bolt',
-              t: 'Refreshed daily',
-              d: 'A 03:00 UTC cron refreshes every active certificate so data stays current.',
+              t: 'Refreshed monthly',
+              d: 'Your certificate refreshes every billing cycle so data stays credible.',
             },
           ].map((b) => (
             <div key={b.i} className="flex gap-3.5">
@@ -199,9 +183,9 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       </div>
 
       {/* Dark CTA section */}
-      <div className="px-12 py-20 bg-ink-900 text-paper">
+      <div className="px-4 md:px-12 py-12 md:py-20 bg-ink-900 text-paper">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-serif text-5xl letter-spacing-tight mb-8 leading-tight">
+          <h2 className="font-serif text-3xl md:text-5xl letter-spacing-tight mb-8 leading-tight">
             Your revenue deserves a
             <br />
             <span className="italic">verified address.</span>
@@ -212,29 +196,24 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             onClick={onStart}
             className="bg-paper text-ink-900 hover:bg-gray-100 mx-auto"
           >
-            Get verified — €14.99
+            Get verified — €9/mo
             <Icon name="arrow-right" size={16} color="#0B1220" />
           </Button>
+          <p className="mt-4 font-mono text-xs text-ink-400">Cancel anytime · No long-term commitment</p>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="px-12 py-7 border-t border-line bg-ink-900 text-ink-300">
-        <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
+      <div className="px-4 md:px-12 py-7 border-t border-line bg-ink-900 text-ink-300">
+        <div className="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
             <Logo tone="paper" size={14} />
             <span className="font-mono text-xs">© 2026 · Dublin, Ireland</span>
           </div>
           <div className="flex gap-6">
-            <a href="#" className="font-mono text-xs hover:text-paper">
-              TERMS
-            </a>
-            <a href="#" className="font-mono text-xs hover:text-paper">
-              PRIVACY
-            </a>
-            <a href="#" className="font-mono text-xs hover:text-paper">
-              SUPPORT
-            </a>
+            <a href="#" className="font-mono text-xs hover:text-paper">TERMS</a>
+            <a href="#" className="font-mono text-xs hover:text-paper">PRIVACY</a>
+            <a href="#" className="font-mono text-xs hover:text-paper">SUPPORT</a>
           </div>
         </div>
       </div>

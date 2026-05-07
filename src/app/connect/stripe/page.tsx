@@ -26,8 +26,7 @@ export default function StripeConnectPage() {
             Connect your Stripe account
           </h1>
           <p className="text-sm text-ink-600">
-            ProofRevenue reads your revenue data to generate a verified certificate.
-            Your Stripe credentials are never stored — only an encrypted read-only token.
+             ProofRevenue only reads your subscription data we never create charges, modify customers, or touch your payouts. You can verify this and revoke access at any time.
           </p>
         </div>
 
