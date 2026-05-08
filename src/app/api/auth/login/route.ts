@@ -105,13 +105,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Login error:', error?.message ?? error);
 
-    if (error.message?.includes('Email not confirmed')) {
-      return NextResponse.json(
-        { error: 'Email not confirmed. Please check your inbox and click the confirmation link.' },
-        { status: 403 }
-      );
-    }
-
     // Increment failed attempt counter (fire-and-forget)
     if (userRow) {
       const newCount = (userRow.failed_login_attempts ?? 0) + 1;
@@ -127,6 +120,9 @@ export async function POST(request: NextRequest) {
         .catch((e) => console.error('[login] counter increment error:', e));
     }
 
-    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Invalid email or password. If you recently signed up, check your inbox for a confirmation link.' },
+      { status: 401 }
+    );
   }
 }
