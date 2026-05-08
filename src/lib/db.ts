@@ -33,13 +33,18 @@ const connectionString = isHostedPostgres
   ? sanitizeConnectionString(rawConnectionString)
   : rawConnectionString;
 
+// Supabase root CA — set SUPABASE_CA_CERT env var to the PEM content from:
+// Supabase dashboard → Project Settings → Database → SSL Certificate
+// If the env var is absent we fall back to the system trust store (rejectUnauthorized: true).
+// Vercel sometimes stores multiline env vars with escaped \n — normalise to real newlines.
+const supabaseCa = process.env.SUPABASE_CA_CERT?.replace(/\\n/g, '\n');
+
 const pool = new Pool({
   connectionString,
-  // Supabase/Vercel hosted Postgres can present cert chains that are not in
-  // the default trust store in serverless environments.
   ssl: isHostedPostgres
     ? {
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
+        ...(supabaseCa ? { ca: supabaseCa } : {}),
       }
     : undefined,
 });
