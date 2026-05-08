@@ -1,0 +1,11 @@
+User-agent: *
+
+# Certificate pages contain private business revenue data — do not index
+Disallow: /c/
+
+# Authenticated app pages
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /auth/
+
+Allow: /
