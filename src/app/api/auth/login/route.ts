@@ -23,8 +23,7 @@ interface LoginRequest {
  * - Session token managed by Supabase Auth in httpOnly cookies
  */
 export async function POST(request: NextRequest) {
-  // IP-based burst filter — best-effort within a single serverless instance.
-  // Not reliable across distributed invocations; DB lockout below is the durable layer.
+  // IP-based burst filter — best-effort within a single serverless instance
   const rateLimit = await consumeLoginAttempt(request);
   if (!rateLimit.allowed) {
     return NextResponse.json(
@@ -49,29 +48,28 @@ export async function POST(request: NextRequest) {
     }
   );
 
-  let body: LoginRequest;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
-
+  // Parse and validate input
+  const body: LoginRequest = await request.json();
   const { email, password } = body;
+
   if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Email and password required' },
+      { status: 400 }
+    );
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  const dbClient = await pool.connect();
 
+  // DB-level lockout check — fail-safe: if DB is unavailable, proceed without blocking login
+  type UserRow = { id: string; failed_login_attempts: number; locked_until: string | null };
+  let userRow: UserRow | null = null;
   try {
-    // DB-level account lockout — survives across all serverless instances
-    const userResult = await dbClient.query(
+    const result = await pool.query<UserRow>(
       `SELECT id, failed_login_attempts, locked_until FROM users WHERE email = $1`,
       [normalizedEmail]
     );
-    const userRow: { id: string; failed_login_attempts: number; locked_until: string | null } | null =
-      userResult.rows[0] ?? null;
+    userRow = result.rows[0] ?? null;
 
     if (userRow?.locked_until && new Date(userRow.locked_until) > new Date()) {
       const retryAfter = Math.ceil((new Date(userRow.locked_until).getTime() - Date.now()) / 1000);
@@ -80,52 +78,55 @@ export async function POST(request: NextRequest) {
         { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
+  } catch (dbErr) {
+    console.error('[login] lockout check failed (proceeding):', dbErr);
+    // Non-fatal: don't block login if DB is unavailable
+  }
 
-    try {
-      const { user } = await signInUser(normalizedEmail, password, supabase);
+  // Attempt Supabase auth
+  try {
+    const { user } = await signInUser(normalizedEmail, password, supabase);
 
-      // Successful login — reset lockout counters
-      if (userRow) {
-        await dbClient.query(
+    // Reset lockout counters (fire-and-forget — signInUser also resets via Supabase client)
+    if (userRow) {
+      pool
+        .query(
           `UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $1`,
           [userRow.id]
-        );
-      }
+        )
+        .catch((e) => console.error('[login] counter reset error:', e));
+    }
 
-      console.log(`User logged in: ${user.id} (${user.email})`);
+    console.log(`User logged in: ${user.id} (${user.email})`);
+    return NextResponse.json(
+      { success: true, message: 'Logged in successfully', user: { id: user.id, email: user.email } },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('Login error:', error?.message ?? error);
+
+    if (error.message?.includes('Email not confirmed')) {
       return NextResponse.json(
-        { success: true, message: 'Logged in successfully', user: { id: user.id, email: user.email } },
-        { status: 200 }
+        { error: 'Email not confirmed. Please check your inbox and click the confirmation link.' },
+        { status: 403 }
       );
-    } catch (error: any) {
-      console.error('Login error:', error);
+    }
 
-      if (error.message?.includes('Email not confirmed')) {
-        return NextResponse.json(
-          { error: 'Email not confirmed. Please check your inbox and click the confirmation link.' },
-          { status: 403 }
-        );
-      }
-
-      // Failed credentials — increment counter and lock after threshold
-      if (userRow) {
-        const newCount = (userRow.failed_login_attempts ?? 0) + 1;
-        const lockUntil =
-          newCount >= MAX_FAILED_ATTEMPTS
-            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
-            : null;
-        await dbClient.query(
+    // Increment failed attempt counter (fire-and-forget)
+    if (userRow) {
+      const newCount = (userRow.failed_login_attempts ?? 0) + 1;
+      const lockUntil =
+        newCount >= MAX_FAILED_ATTEMPTS
+          ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
+          : null;
+      pool
+        .query(
           `UPDATE users SET failed_login_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3`,
           [newCount, lockUntil, userRow.id]
-        );
-      }
-
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+        )
+        .catch((e) => console.error('[login] counter increment error:', e));
     }
-  } catch (error: any) {
-    console.error('Login handler error:', error);
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
-  } finally {
-    dbClient.release();
+
+    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 }
