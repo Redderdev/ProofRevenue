@@ -1,3 +1,8 @@
+// RateLimiterMemory is in-process only — not reliable across distributed serverless instances.
+// For login, the durable layer is DB-based account lockout in login/route.ts.
+// For signup and metrics, in-memory is accepted as best-effort:
+//   - Signup: each account requires real email confirmation, limiting abuse impact.
+//   - Metrics: requires a valid authenticated session, so abuse surface is minimal.
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 const loginLimiter = new RateLimiterMemory({
@@ -10,7 +15,6 @@ const signupLimiter = new RateLimiterMemory({
   duration: 15 * 60,
 });
 
-// 30 Stripe metric fetches per user per minute — prevents API exhaustion
 const metricsLimiter = new RateLimiterMemory({
   points: 30,
   duration: 60,
