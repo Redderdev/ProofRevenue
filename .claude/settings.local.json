@@ -8,7 +8,10 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(npx tsc *)",
-      "Bash(del \"c:\\\\Users\\\\inf4198\\\\Desktop\\\\project\\\\proofrevenue\\\\src\\\\lib\\\\auth-mock.ts\")"
+      "Bash(del \"c:\\\\Users\\\\inf4198\\\\Desktop\\\\project\\\\proofrevenue\\\\src\\\\lib\\\\auth-mock.ts\")",
+      "Bash(curl -sI \"https://proof-revenue.vercel.app/\")",
+      "Bash(curl -sI \"https://proof-revenue.vercel.app/\" -H \"Cache-Control: no-cache\" -H \"Pragma: no-cache\")",
+      "Bash(curl -sI \"https://proof-revenue.vercel.app/auth/signin\")"
     ]
   }
 }

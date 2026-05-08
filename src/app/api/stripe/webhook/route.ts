@@ -74,6 +74,23 @@ export async function POST(request: NextRequest) {
     const client = await pool.connect();
 
     try {
+      // Atomic idempotency claim — insert with processed=false before any work.
+      // ON CONFLICT DO NOTHING returns 0 rows if the event was already claimed,
+      // meaning a previous invocation already processed (or is processing) it.
+      const claimed = await client.query(
+        `INSERT INTO stripe_events (id, type, data, processed)
+         VALUES ($1, $2, $3, false)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [event.id, event.type, JSON.stringify(event.data)]
+      );
+
+      if (claimed.rows.length === 0) {
+        console.log(`[Webhook] Duplicate event ${event.id} (${event.type}) — skipping`);
+        return NextResponse.json({ received: true });
+      }
+
+      // We claimed the event — now process it
       switch (event.type) {
 
         // ── Checkout completed → activate certificate ──────────────────────
@@ -229,11 +246,10 @@ export async function POST(request: NextRequest) {
           console.log(`[Webhook] Unhandled event type: ${event.type}`);
       }
 
+      // Mark the claimed event as fully processed
       await client.query(
-        `INSERT INTO stripe_events (id, type, data, processed)
-         VALUES ($1, $2, $3, true)
-         ON CONFLICT (id) DO NOTHING`,
-        [event.id, event.type, JSON.stringify(event.data)]
+        `UPDATE stripe_events SET processed = true WHERE id = $1`,
+        [event.id]
       );
 
       return NextResponse.json({ received: true });

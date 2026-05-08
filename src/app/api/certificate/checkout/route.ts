@@ -6,7 +6,7 @@ import pool from '@/lib/db';
 import crypto from 'crypto';
 
 function generateCertificateId(): string {
-  return 'crt_' + crypto.randomBytes(6).toString('hex');
+  return 'crt_' + crypto.randomBytes(16).toString('hex');
 }
 
 export async function POST(request: NextRequest) {
