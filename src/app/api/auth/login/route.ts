@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         .catch((e) => console.error('[login] counter reset error:', e));
     }
 
-    console.log(`User logged in: ${user.id} (${user.email})`);
+    console.log(`[auth] login ok uid=${user.id}`);
     return NextResponse.json(
       { success: true, message: 'Logged in successfully', user: { id: user.id, email: user.email } },
       { status: 200 }

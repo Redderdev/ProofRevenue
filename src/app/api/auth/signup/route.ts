@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         supabase
       );
 
-      console.log(`User signed up: ${user.id} (${user.email})`);
+      console.log(`[auth] signup ok uid=${user.id}`);
 
       return NextResponse.json(
         {
