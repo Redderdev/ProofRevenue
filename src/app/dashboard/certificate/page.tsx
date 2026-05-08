@@ -7,5 +7,11 @@ import { CertificatePage } from '@/components/screens/Certificate';
 export default function DashboardCertificatePage() {
   const router = useRouter();
 
-  return <CertificatePage onNav={() => router.push('/dashboard')} />;
+  const handleNav = (screen: string) => {
+    if (screen === 'settings') { router.push('/dashboard/settings'); return; }
+    if (screen === 'certificate') { return; } // already here
+    router.push('/dashboard');
+  };
+
+  return <CertificatePage onNav={handleNav} />;
 }
