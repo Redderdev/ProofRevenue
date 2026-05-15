@@ -209,21 +209,14 @@ export async function POST(request: NextRequest) {
         }
 
         // ── Stripe account deauthorized ───────────────────────────────────
+        // We call stripe.oauth.deauthorize() ourselves after every OAuth connect
+        // (connect-fetch-disconnect model). That triggers this event too, so we
+        // cannot safely set revoked_at here — it would silently revoke every new
+        // connection. revoked_at is set only by the explicit /api/stripe/disconnect
+        // endpoint when the user intentionally disconnects via our UI.
         case 'account.application.deauthorized': {
           const account = event.data.object as any;
-          await client.query(
-            `UPDATE stripe_connections
-             SET revoked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-             WHERE stripe_user_id = $1`,
-            [account.id]
-          );
-          await client.query(
-            `UPDATE users
-             SET connected_at = NULL, updated_at = CURRENT_TIMESTAMP
-             WHERE stripe_account_id = $1`,
-            [account.id]
-          );
-          console.log(`[Webhook] account.application.deauthorized: ${account.id}`);
+          console.log(`[Webhook] account.application.deauthorized received for ${account.id} — no action (expected from connect-fetch-disconnect flow)`);
           break;
         }
 

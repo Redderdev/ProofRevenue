@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       [userId, stripe_user_id, livemode]
     );
 
-    // 6. If an active certificate is awaiting refresh, update it with new metrics
+    // 6. Update any active certificate with the fresh metrics snapshot
     if (metrics) {
       const refreshResult = await client.query(
         `UPDATE certificates
@@ -193,12 +193,12 @@ export async function GET(request: NextRequest) {
              last_snapshot_at = NOW(),
              next_refresh_at = NOW() + INTERVAL '30 days',
              updated_at = NOW()
-         WHERE user_id = $1 AND status = 'active' AND data_status = 'refresh_needed'
+         WHERE user_id = $1 AND status = 'active' AND is_active = true
          RETURNING id`,
         [userId, metrics.mrr, metrics.arr, metrics.activeCustomers]
       );
       if (refreshResult.rows.length > 0) {
-        console.log(`[OAuth Callback] Certificate ${refreshResult.rows[0].id} refreshed with new metrics`);
+        console.log(`[OAuth Callback] Certificate ${refreshResult.rows[0].id} refreshed with new snapshot`);
       }
     }
 
