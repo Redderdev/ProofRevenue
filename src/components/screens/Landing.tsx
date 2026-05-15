@@ -14,6 +14,7 @@ interface LandingProps {
 export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
   const { user, isAuthenticated, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [openFaq, setOpenFaq] = React.useState<number | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -28,10 +29,10 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
         <Logo />
         <div className="flex items-center gap-4 md:gap-7">
           <nav className="hidden md:flex items-center gap-7">
-            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">How it works</a>
-            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">Example</a>
-            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">Pricing</a>
-            <a href="#" className="text-sm text-ink-600 hover:text-ink-900">FAQ</a>
+            <a href="#how-it-works" className="text-sm text-ink-600 hover:text-ink-900 transition-colors">How it works</a>
+            <a href="#example" className="text-sm text-ink-600 hover:text-ink-900 transition-colors">Example</a>
+            <a href="#pricing" className="text-sm text-ink-600 hover:text-ink-900 transition-colors">Pricing</a>
+            <a href="#faq" className="text-sm text-ink-600 hover:text-ink-900 transition-colors">FAQ</a>
           </nav>
 
           {isAuthenticated && user ? (
@@ -57,13 +58,13 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-line rounded-full bg-white mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald" />
-              <span className="font-mono text-xs text-ink-600 letter-spacing-tight">
-                VERIFIED · via Stripe · 2,140 founders
+              <span className="font-mono text-xs text-ink-600">
+                STRIPE VERIFIED · LIVE MODE ONLY
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="font-serif text-4xl md:text-6xl letter-spacing-tight mt-6 mb-5 leading-tight">
+            <h1 className="font-serif text-4xl md:text-6xl tracking-tight mt-6 mb-5 leading-tight">
               Prove your revenue.
               <br />
               <span className="italic text-ink-600">Not a screenshot.</span>
@@ -81,10 +82,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
                 Get verified — €9/mo
                 <Icon name="arrow-right" size={16} color="white" />
               </Button>
-              <Button variant="ghost" size="lg">
-                See a live certificate
-                <Icon name="external" size={14} color="currentColor" />
-              </Button>
+              <a href="#example">
+                <Button variant="ghost" size="lg">
+                  See a live certificate
+                  <Icon name="external" size={14} color="currentColor" />
+                </Button>
+              </a>
             </div>
 
             {/* Trust signals */}
@@ -93,9 +96,9 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
               <span className="hidden sm:block w-px h-3 bg-line" />
               <span className="font-mono text-xs text-ink-400">CANCEL ANYTIME</span>
               <span className="hidden sm:block w-px h-3 bg-line" />
-              <span className="font-mono text-xs text-ink-400">NO STRIPE TOKENS STORED</span>
+              <span className="font-mono text-xs text-ink-400">NO TOKENS STORED</span>
               <span className="hidden sm:block w-px h-3 bg-line" />
-              <span className="font-mono text-xs text-ink-400">LIVE-MODE ONLY</span>
+              <span className="font-mono text-xs text-ink-400">LIVE MODE ONLY</span>
             </div>
           </div>
 
@@ -107,12 +110,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       </div>
 
       {/* How it works */}
-      <div className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
+      <div id="how-it-works" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
         <div className="max-w-screen-2xl mx-auto">
-          <div className="font-mono text-xs font-medium letter-spacing-wide text-ink-400 uppercase mb-4">
+          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
             How it works
           </div>
-          <h2 className="font-serif text-2xl md:text-4xl letter-spacing-tight mb-10 md:mb-12 max-w-2xl leading-tight">
+          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-10 md:mb-12 max-w-2xl leading-tight">
             Four steps from signup to a shareable link.
           </h2>
 
@@ -136,12 +139,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
               {
                 n: '04',
                 t: 'Share your link',
-                d: 'A unique public URL at proof.revenue/c/… you can drop anywhere.',
+                d: 'A unique public URL at proof-revenue.vercel.app/c/… you can drop anywhere.',
               },
             ].map((s) => (
               <div key={s.n} className="pt-6 border-t border-ink-900">
                 <div className="font-mono text-xs text-ink-400 uppercase mb-3">{s.n}</div>
-                <div className="font-serif text-xl letter-spacing-tight mb-2">{s.t}</div>
+                <div className="font-serif text-xl tracking-tight mb-2">{s.t}</div>
                 <div className="text-sm text-ink-600 leading-relaxed">{s.d}</div>
               </div>
             ))}
@@ -156,7 +159,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             {
               i: 'shield-check',
               t: 'Server-verified',
-              d: 'Every certificate page re-fetches the latest snapshot from Stripe before render.',
+              d: 'Every certificate page re-fetches the latest snapshot from our database before render.',
             },
             {
               i: 'lock',
@@ -182,10 +185,136 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
         </div>
       </div>
 
+      {/* Example */}
+      <div id="example" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
+        <div className="max-w-screen-2xl mx-auto">
+          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+            Example certificate
+          </div>
+          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-3 leading-tight">
+            Here's what investors and buyers will see.
+          </h2>
+          <p className="text-sm text-ink-600 mb-10 max-w-lg">
+            A public URL with live data pulled directly from Stripe. No editing possible — the numbers are what they are.
+          </p>
+          <div className="flex justify-center lg:justify-start">
+            <div className="w-full max-w-sm">
+              <MiniCertPreview />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pricing */}
+      <div id="pricing" className="px-4 md:px-12 py-12 md:py-20 border-t border-line">
+        <div className="max-w-screen-2xl mx-auto">
+          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+            Pricing
+          </div>
+          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-10 leading-tight">
+            One plan. Everything included.
+          </h2>
+
+          <div className="max-w-sm">
+            <div className="bg-white border border-line rounded-2xl p-8">
+              {/* Price */}
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="font-serif text-5xl tracking-tight">€9</span>
+                <span className="text-sm text-ink-400 font-mono">/ month</span>
+              </div>
+              <p className="text-xs text-ink-400 font-mono mb-8">Billed monthly · cancel anytime</p>
+
+              {/* Features */}
+              <ul className="space-y-3 mb-8">
+                {[
+                  'MRR, ARR & customer count',
+                  'Shareable public certificate link',
+                  'Monthly auto-refresh',
+                  'Stripe-verified badge',
+                  'Read-only Stripe OAuth',
+                  'Live mode only — real data only',
+                ].map((f) => (
+                  <li key={f} className="flex items-center gap-3">
+                    <Icon name="check" size={15} color="#18A066" strokeWidth={2} />
+                    <span className="text-sm text-ink-700">{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button variant="primary" size="lg" onClick={onStart} className="w-full justify-center">
+                Get verified — €9/mo
+                <Icon name="arrow-right" size={16} color="white" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ */}
+      <div id="faq" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
+        <div className="max-w-screen-2xl mx-auto">
+          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+            FAQ
+          </div>
+          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-10 leading-tight">
+            Common questions.
+          </h2>
+
+          <div className="max-w-2xl space-y-0 divide-y divide-line border-t border-b border-line">
+            {[
+              {
+                q: 'What does ProofRevenue actually verify?',
+                a: 'We connect to your Stripe account via read-only OAuth and read your active subscriptions. MRR is the sum of recurring subscription revenue for the current month. ARR is MRR × 12. Customer count is the number of subscriptions with a paid status. One-time payments are excluded.',
+              },
+              {
+                q: 'Is my Stripe data safe?',
+                a: 'Yes. We use Stripe Connect with read-only permissions — we can only read data, never initiate charges or make changes. We never store your Stripe access token. Only your Stripe account ID is persisted so we can fetch updated data at the next billing cycle.',
+              },
+              {
+                q: 'What counts as MRR?',
+                a: 'Active subscriptions in live mode only. Monthly plans count at face value. Annual plans are normalised to a monthly figure (total / 12). Free trials, paused subscriptions, and cancelled subscriptions are excluded.',
+              },
+              {
+                q: 'Can I cancel anytime?',
+                a: 'Yes. Cancel from your dashboard at any time with one click. Your subscription ends at the current billing period and your certificate link is deactivated immediately.',
+              },
+              {
+                q: 'Does it work with Stripe test mode?',
+                a: 'No — ProofRevenue is live mode only. This is intentional. Test data is not real revenue, and the whole point is that investors and buyers can trust the numbers.',
+              },
+              {
+                q: 'What if I disconnect Stripe later?',
+                a: 'Your certificate will be marked as pending re-verification. The public link stays live but shows that data cannot be refreshed until Stripe access is restored.',
+              },
+            ].map((item, i) => (
+              <div key={i}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between py-5 text-left gap-4"
+                >
+                  <span className="text-sm font-medium text-ink-900">{item.q}</span>
+                  <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-ink-400">
+                    <svg
+                      width="12" height="12" viewBox="0 0 12 12" fill="none"
+                      style={{ transform: openFaq === i ? 'rotate(45deg)' : 'none', transition: 'transform 150ms' }}
+                    >
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </button>
+                {openFaq === i && (
+                  <p className="pb-5 text-sm text-ink-600 leading-relaxed pr-8">{item.a}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Dark CTA section */}
       <div className="px-4 md:px-12 py-12 md:py-20 bg-ink-900 text-paper">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-serif text-3xl md:text-5xl letter-spacing-tight mb-8 leading-tight">
+          <h2 className="font-serif text-3xl md:text-5xl tracking-tight mb-8 leading-tight">
             Your revenue deserves a
             <br />
             <span className="italic">verified address.</span>
@@ -208,12 +337,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
         <div className="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
             <Logo tone="paper" size={14} />
-            <span className="font-mono text-xs">© 2026 · Dublin, Ireland</span>
+            <span className="font-mono text-xs">© 2026 ProofRevenue</span>
           </div>
           <div className="flex gap-6">
-            <a href="#" className="font-mono text-xs hover:text-paper">TERMS</a>
-            <a href="#" className="font-mono text-xs hover:text-paper">PRIVACY</a>
-            <a href="#" className="font-mono text-xs hover:text-paper">SUPPORT</a>
+            <a href="#" className="font-mono text-xs hover:text-paper transition-colors">IMPRESSUM</a>
+            <a href="#" className="font-mono text-xs hover:text-paper transition-colors">DATENSCHUTZ</a>
+            <a href="#" className="font-mono text-xs hover:text-paper transition-colors">SUPPORT</a>
           </div>
         </div>
       </div>
@@ -230,7 +359,6 @@ const MiniCertPreview: React.FC = () => {
     arr: 584640,
     customers: 1284,
     verifiedAt: 'Apr 23, 2026',
-    mrrHistory: [18200, 21900, 24300, 27800, 31200, 34600, 38100, 41900, 44800, 46500, 47200, 48720],
   };
 
   return (
@@ -238,7 +366,7 @@ const MiniCertPreview: React.FC = () => {
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Icon name="shield-check" size={14} color="oklch(0.62 0.14 158)" />
-          <span className="font-mono text-xs letter-spacing-wide text-ink-300 uppercase">
+          <span className="font-mono text-xs tracking-widest text-ink-300 uppercase">
             VERIFIED · APR 2026
           </span>
         </div>
@@ -246,31 +374,31 @@ const MiniCertPreview: React.FC = () => {
       </div>
 
       <div className="flex items-baseline gap-2.5 mb-7">
-        <div className="font-serif text-3xl letter-spacing-tight">{mockData.name}</div>
+        <div className="font-serif text-3xl tracking-tight">{mockData.name}</div>
         <span className="font-mono text-xs text-ink-300">{mockData.domain}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-0 border border-white border-opacity-10 rounded-lg">
         <div className="px-4 py-4 border-r border-b border-white border-opacity-10">
-          <div className="font-mono text-xs text-ink-300 letter-spacing-normal">MRR</div>
-          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.mrr.toLocaleString('en-US')}</div>
+          <div className="font-mono text-xs text-ink-300">MRR</div>
+          <div className="font-serif text-3xl tracking-tight mt-1">€{mockData.mrr.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4 border-b border-white border-opacity-10">
-          <div className="font-mono text-xs text-ink-300 letter-spacing-normal">ARR</div>
-          <div className="font-serif text-3xl letter-spacing-tight mt-1">€{mockData.arr.toLocaleString('en-US')}</div>
+          <div className="font-mono text-xs text-ink-300">ARR</div>
+          <div className="font-serif text-3xl tracking-tight mt-1">€{mockData.arr.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4 border-r border-white border-opacity-10">
-          <div className="font-mono text-xs text-ink-300 letter-spacing-normal">CUSTOMERS</div>
-          <div className="font-serif text-2xl letter-spacing-tight mt-1">{mockData.customers.toLocaleString('en-US')}</div>
+          <div className="font-mono text-xs text-ink-300">CUSTOMERS</div>
+          <div className="font-serif text-2xl tracking-tight mt-1">{mockData.customers.toLocaleString('en-US')}</div>
         </div>
         <div className="px-4 py-4">
-          <div className="font-mono text-xs text-ink-300 letter-spacing-normal">ISSUED</div>
-          <div className="font-serif text-2xl letter-spacing-tight mt-1">{mockData.verifiedAt}</div>
+          <div className="font-mono text-xs text-ink-300">ISSUED</div>
+          <div className="font-serif text-2xl tracking-tight mt-1">{mockData.verifiedAt}</div>
         </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between pt-4 border-t border-white border-opacity-10">
-        <span className="font-mono text-xs text-ink-300">proof.revenue/c/{mockData.certificateId}</span>
+        <span className="font-mono text-xs text-ink-300">proof-revenue.vercel.app/c/{mockData.certificateId}</span>
         <span className="flex items-center gap-1">
           <Icon name="stripe-s" size={10} color="rgba(255,255,255,0.5)" />
           <span className="font-mono text-xs text-ink-300">via Stripe</span>
