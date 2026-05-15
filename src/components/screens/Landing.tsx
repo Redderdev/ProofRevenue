@@ -152,38 +152,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
         </div>
       </div>
 
-      {/* Trust row */}
-      <div className="px-4 md:px-12 py-10 md:py-14 border-t border-line">
-        <div className="max-w-screen-2xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
-          {[
-            {
-              i: 'shield-check',
-              t: 'Server-verified',
-              d: 'Every certificate page re-fetches the latest snapshot from our database before render.',
-            },
-            {
-              i: 'lock',
-              t: 'No tokens stored',
-              d: 'Your access token is used once then discarded. We persist only your account ID and the verified numbers.',
-            },
-            {
-              i: 'bolt',
-              t: 'Refreshed monthly',
-              d: 'Each billing cycle you reconnect Stripe in one click — we fetch, then immediately discard the token.',
-            },
-          ].map((b) => (
-            <div key={b.i} className="flex gap-3.5">
-              <div className="w-8 h-8 rounded border border-line flex items-center justify-center flex-shrink-0">
-                <Icon name={b.i as any} size={16} />
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">{b.t}</div>
-                <div className="text-xs text-ink-600 leading-relaxed">{b.d}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      
 
       {/* Example */}
       <div id="example" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
