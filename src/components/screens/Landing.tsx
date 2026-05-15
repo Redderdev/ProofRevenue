@@ -351,7 +351,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             variant="primary"
             size="lg"
             onClick={onStart}
-            className="bg-paper text-ink-900 hover:bg-gray-100 mx-auto"
+            className="bg-paper text-black hover:bg-gray-100 mx-auto"
           >
             Get verified — €9/mo
             <Icon name="arrow-right" size={16} color="#f8f6f6" />
