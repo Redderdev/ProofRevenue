@@ -93,7 +93,7 @@ export default function DashboardSettingsPage() {
                   <span className="text-sm text-ink-600">Status</span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                    Connected
+                    Snapshot active
                   </span>
                 </div>
                 {connection.displayName && (
@@ -121,12 +121,15 @@ export default function DashboardSettingsPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-5 py-4">
-                  <span className="text-sm text-ink-600">Access granted</span>
-                  <span className="text-sm text-ink-900">Read-only</span>
+                  <span className="text-sm text-ink-600">Access token</span>
+                  <span className="text-sm text-ink-400">Discarded after snapshot</span>
                 </div>
-                <div className="px-5 py-4">
+                <div className="px-5 py-4 space-y-2">
+                  <p className="text-xs text-ink-400">
+                    Removes your Stripe data from ProofRevenue and deactivates your certificate. This cannot be undone.
+                  </p>
                   {disconnectError && (
-                    <p className="text-sm text-red-600 mb-3">{disconnectError}</p>
+                    <p className="text-sm text-red-600">{disconnectError}</p>
                   )}
                   <Button
                     variant="ghost"
@@ -135,7 +138,7 @@ export default function DashboardSettingsPage() {
                     loading={disconnecting}
                     className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                   >
-                    Disconnect Stripe
+                    Remove data &amp; deactivate certificate
                   </Button>
                 </div>
               </>
@@ -177,16 +180,9 @@ export default function DashboardSettingsPage() {
             </div>
             <p className="text-xs text-ink-400 pt-2 border-t border-line">
               We never create charges, issue refunds, or modify anything in your Stripe account.
-              You can revoke access at any time above or directly in your{' '}
-              <a
-                href="https://dashboard.stripe.com/settings/apps"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                Stripe dashboard
-              </a>
-              .
+              The OAuth access token is discarded immediately after the snapshot — we hold no ongoing
+              connection to Stripe. Your revenue figures are stored only in ProofRevenue's database
+              and can be removed at any time using the button above.
             </p>
           </div>
         </section>
