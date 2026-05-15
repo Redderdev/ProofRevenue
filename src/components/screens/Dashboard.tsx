@@ -163,7 +163,7 @@ const DashboardBody: React.FC<{
   if (state === 'payment_pending') return <StatePaymentPending />;
   if (state === 'payment_abandoned') return <StatePaymentAbandoned onAction={onAction} />;
   if (state === 'data_pending') return <StateDataPending />;
-  if (state === 'certificate_active') return <StateActive certificate={certificate} />;
+  if (state === 'certificate_active') return <StateActive certificate={certificate} onAction={onAction} />;
   if (state === 'certificate_refresh_needed') return <StateRefreshNeeded onAction={onAction} certificate={certificate} />;
   if (state === 'stripe_revoked_after_payment') return <StateRevokedPost />;
   return null;
@@ -487,7 +487,10 @@ const StateDataPending: React.FC = () => {
   );
 };
 
-const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certificate }) => {
+const StateActive: React.FC<{
+  certificate?: CertificateData | null;
+  onAction?: (action: string) => void;
+}> = ({ certificate, onAction }) => {
   const [copied, setCopied] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
@@ -539,7 +542,7 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
             </Button>
           </div>
           <p className="font-mono text-xs text-ink-400 mt-2.5">
-            Share this link with investors, buyers, or press. Data refreshes monthly.
+            Share this link with investors, buyers, or press.
           </p>
         </div>
       </Card>
@@ -547,7 +550,7 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
       {/* Verified metrics */}
       <Card className="overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-line">
-          <p className="font-mono text-xs letter-spacing-wide text-ink-400 uppercase">Verified revenue snapshot</p>
+          <p className="font-mono text-xs tracking-wide text-ink-400 uppercase">Verified revenue snapshot</p>
         </div>
 
         {/* Mobile: 2×2 grid */}
@@ -593,6 +596,17 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
               : '—'}
             sub="Active as of verified date"
           />
+        </div>
+
+        {/* Refresh row */}
+        <div className="px-4 sm:px-5 py-4 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="font-mono text-xs text-ink-400">
+            Last verified {verifiedLabel} · your access token was discarded after this snapshot
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => onAction?.('connect')}>
+            <Icon name="refresh" size={13} />
+            Refresh data
+          </Button>
         </div>
       </Card>
     </div>
