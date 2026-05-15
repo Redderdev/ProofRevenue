@@ -188,17 +188,35 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       {/* Example */}
       <div id="example" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
         <div className="max-w-screen-2xl mx-auto">
-          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
-            Example certificate
-          </div>
-          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-3 leading-tight">
-            What investors and buyers will see.
-          </h2>
-          <p className="text-sm text-ink-600 mb-10 max-w-lg">
-            A public URL with live data pulled directly from Stripe. No editing possible — the numbers are what they are.
-          </p>
-          <div className="flex justify-center lg:justify-start">
-            <div className="w-full max-w-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Left — text + feature list */}
+            <div>
+              <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+                Example certificate
+              </div>
+              <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-4 leading-tight">
+                What investors and buyers will see.
+              </h2>
+              <p className="text-sm text-ink-600 mb-8 leading-relaxed max-w-lg">
+                A permanent public URL with live data pulled directly from Stripe. No editing possible — the numbers are what they are.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'MRR — monthly recurring revenue, live from Stripe',
+                  'ARR — annualised, calculated automatically',
+                  'Active customer count — paid subscriptions only',
+                  'Stripe-verified badge and verification timestamp',
+                  'Shareable link — no login required to view',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <Icon name="check" size={14} color="#18A066" strokeWidth={2} className="mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-ink-700">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Right — certificate preview */}
+            <div>
               <MiniCertPreview />
             </div>
           </div>
@@ -208,43 +226,79 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       {/* Pricing */}
       <div id="pricing" className="px-4 md:px-12 py-12 md:py-20 border-t border-line">
         <div className="max-w-screen-2xl mx-auto">
-          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
-            Pricing
-          </div>
-          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-10 leading-tight">
-            One plan. Everything included.
-          </h2>
-
-          <div className="max-w-sm">
-            <div className="bg-white border border-line rounded-2xl p-8">
-              {/* Price */}
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="font-serif text-5xl tracking-tight">€9</span>
-                <span className="text-sm text-ink-400 font-mono">/ month</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+            {/* Left — card */}
+            <div>
+              <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+                Pricing
               </div>
-              <p className="text-xs text-ink-400 font-mono mb-8">Billed monthly · cancel anytime</p>
+              <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-8 leading-tight">
+                One plan. Everything included.
+              </h2>
+              <div className="bg-white border border-line rounded-2xl p-8 max-w-sm">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="font-serif text-5xl tracking-tight">€9</span>
+                  <span className="text-sm text-ink-400 font-mono">/ month</span>
+                </div>
+                <p className="text-xs text-ink-400 font-mono mb-8">Billed monthly · cancel anytime</p>
+                <ul className="space-y-3 mb-8">
+                  {[
+                    'MRR, ARR & customer count',
+                    'Shareable public certificate link',
+                    'Monthly auto-refresh',
+                    'Stripe-verified badge',
+                    'Read-only Stripe OAuth',
+                    'Live mode only — real data only',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-3">
+                      <Icon name="check" size={15} color="#18A066" strokeWidth={2} />
+                      <span className="text-sm text-ink-700">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="primary" size="lg" onClick={onStart} className="w-full justify-center">
+                  Get verified — €9/mo
+                  <Icon name="arrow-right" size={16} color="white" />
+                </Button>
+              </div>
+            </div>
 
-              {/* Features */}
-              <ul className="space-y-3 mb-8">
+            {/* Right — trust points */}
+            <div className="lg:pt-24">
+              <div className="space-y-6">
                 {[
-                  'MRR, ARR & customer count',
-                  'Shareable public certificate link',
-                  'Monthly auto-refresh',
-                  'Stripe-verified badge',
-                  'Read-only Stripe OAuth',
-                  'Live mode only — real data only',
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-3">
-                    <Icon name="check" size={15} color="#18A066" strokeWidth={2} />
-                    <span className="text-sm text-ink-700">{f}</span>
-                  </li>
+                  {
+                    icon: 'check-circle',
+                    t: 'No hidden fees',
+                    d: '€9 flat per month. No setup fee, no per-certificate charge, nothing extra.',
+                  },
+                  {
+                    icon: 'refresh',
+                    t: 'Cancel anytime',
+                    d: 'Cancel from your dashboard with one click. No questions, no contracts, no minimums.',
+                  },
+                  {
+                    icon: 'lock',
+                    t: 'Secure by default',
+                    d: 'Read-only Stripe OAuth. We never store tokens or touch your money.',
+                  },
+                  {
+                    icon: 'bolt',
+                    t: 'Automatically current',
+                    d: 'Your certificate refreshes each billing cycle. No manual re-verification needed.',
+                  },
+                ].map((b) => (
+                  <div key={b.t} className="flex gap-4">
+                    <div className="w-8 h-8 rounded border border-line flex items-center justify-center flex-shrink-0 bg-white">
+                      <Icon name={b.icon as any} size={16} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold mb-1">{b.t}</div>
+                      <div className="text-xs text-ink-600 leading-relaxed">{b.d}</div>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-
-              <Button variant="primary" size="lg" onClick={onStart} className="w-full justify-center">
-                Get verified — €9/mo
-                <Icon name="arrow-right" size={16} color="white" />
-              </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -253,14 +307,18 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
       {/* FAQ */}
       <div id="faq" className="px-4 md:px-12 py-12 md:py-20 border-t border-line bg-paper-alt">
         <div className="max-w-screen-2xl mx-auto">
-          <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
-            FAQ
-          </div>
-          <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-10 leading-tight">
-            Common questions.
-          </h2>
-
-          <div className="max-w-2xl space-y-0 divide-y divide-line border-t border-b border-line">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,2fr] gap-10 lg:gap-16 items-start">
+            {/* Left — heading */}
+            <div>
+              <div className="font-mono text-xs font-medium tracking-widest text-ink-400 uppercase mb-4">
+                FAQ
+              </div>
+              <h2 className="font-serif text-2xl md:text-4xl tracking-tight leading-tight">
+                Common questions.
+              </h2>
+            </div>
+            {/* Right — accordion */}
+            <div className="space-y-0 divide-y divide-line border-t border-b border-line">
             {[
               {
                 q: 'What does ProofRevenue actually verify?',
@@ -307,6 +365,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
                 )}
               </div>
             ))}
+            </div>
           </div>
         </div>
       </div>
