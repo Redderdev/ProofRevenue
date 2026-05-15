@@ -243,13 +243,13 @@ export default async function PublicCertificatePage({
         {/* How verified */}
         <div className="bg-white border border-line rounded-xl p-5 sm:p-6 mb-6">
           <div className="font-mono text-xs text-ink-400 uppercase tracking-widest mb-3">
-            How this is verified
+            Why you can trust this
           </div>
           <p className="text-sm text-ink-600 leading-relaxed">
-            ProofRevenue reads revenue data directly from Stripe using read-only OAuth access to
-            a verified Stripe account.
-            Figures are snapshotted at connection time. The access token is discarded immediately — we never store it.
-            This URL re-renders from the verified database snapshot on every request and cannot be manually edited.
+            These figures come directly from Stripe — not entered by the business.
+            ProofRevenue connected to their live Stripe account via official OAuth, read the subscription
+            data at source, and sealed it here. The numbers on this page cannot be manually changed
+            or edited. Only a fresh Stripe connection can produce a new snapshot.
           </p>
           {cert.account_country && (
             <div className="mt-3 pt-3 border-t border-line flex flex-wrap gap-4">
