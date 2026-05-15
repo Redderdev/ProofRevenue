@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import pool from '@/lib/db';
 import { Sparkline } from '@/components/Common';
 import CopyLinkButton from './CopyLinkButton';
@@ -31,6 +32,49 @@ function fmtDatetime(d: Date | string | null): string {
     date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) +
     ' UTC'
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { certificateId: string };
+}): Promise<Metadata> {
+  const result = await pool.query(
+    `SELECT c.mrr, sc.account_name, sc.account_url, sc.stripe_user_id
+     FROM certificates c
+     JOIN stripe_connections sc ON sc.user_id = c.user_id
+     WHERE c.id = $1 AND c.is_public = true AND c.is_active = true`,
+    [params.certificateId]
+  );
+  if (result.rows.length === 0) {
+    return { robots: { index: false, follow: false } };
+  }
+  const row = result.rows[0];
+  const companyName =
+    row.account_name?.trim() ||
+    (row.account_url ? new URL(row.account_url).hostname.replace(/^www\./, '') : row.stripe_user_id);
+  const mrr = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format((row.mrr ?? 0) / 100);
+  const title = `${companyName} — ${mrr} MRR`;
+  const description = `${companyName} has its revenue independently verified against Stripe. ${mrr} monthly recurring revenue — verified, not a screenshot.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+    robots: { index: false, follow: false },
+  };
 }
 
 export default async function PublicCertificatePage({

@@ -24,20 +24,42 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ProofRevenue — Verified Revenue Certificate',
+  metadataBase: new URL('https://proof-revenue.vercel.app'),
+  title: {
+    default: 'ProofRevenue — Verified Revenue Certificate',
+    template: '%s | ProofRevenue',
+  },
   description:
-    'Prove your revenue with a verified certificate. Connect Stripe, pay once, get a shareable link. No screenshots, no fake numbers.',
+    'Prove your revenue with a verified certificate. Connect Stripe, pay once, get a shareable link investors and buyers can trust. No screenshots, no fake numbers.',
   keywords: [
     'revenue verification',
-    'Stripe',
-    'certificate',
+    'Stripe certificate',
     'proof of revenue',
-    'founder',
+    'MRR verification',
+    'SaaS revenue proof',
+    'investor due diligence',
   ],
   openGraph: {
-    title: 'ProofRevenue',
-    description: 'Verified revenue certificate powered by Stripe',
+    title: 'ProofRevenue — Verified Revenue Certificate',
+    description:
+      'Connect Stripe. Get verified MRR, ARR and customer count in one shareable link investors and buyers can trust.',
     type: 'website',
+    url: 'https://proof-revenue.vercel.app',
+    siteName: 'ProofRevenue',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ProofRevenue — Verified Revenue Certificate',
+    description:
+      'Connect Stripe. Get verified MRR, ARR and customer count in one shareable link investors and buyers can trust.',
+  },
+  alternates: {
+    canonical: 'https://proof-revenue.vercel.app',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
   },
 };
 
