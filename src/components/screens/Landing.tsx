@@ -192,7 +192,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             Example certificate
           </div>
           <h2 className="font-serif text-2xl md:text-4xl tracking-tight mb-3 leading-tight">
-            Here's what investors and buyers will see.
+            What investors and buyers will see.
           </h2>
           <p className="text-sm text-ink-600 mb-10 max-w-lg">
             A public URL with live data pulled directly from Stripe. No editing possible — the numbers are what they are.
