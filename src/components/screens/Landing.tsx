@@ -124,12 +124,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
               {
                 n: '01',
                 t: 'Connect Stripe',
-                d: 'OAuth via Stripe Connect. We never see or store your access token.',
+                d: 'OAuth via Stripe Connect. Your token is used once to fetch your data, then discarded. We never store it.',
               },
               {
                 n: '02',
                 t: 'Subscribe — €9/mo',
-                d: 'One Stripe Checkout. Cancel anytime. Certificate refreshes every month.',
+                d: 'One Stripe Checkout. Cancel anytime. Each billing cycle you reconnect Stripe to refresh your snapshot.',
               },
               {
                 n: '03',
@@ -164,12 +164,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             {
               i: 'lock',
               t: 'No tokens stored',
-              d: 'We persist only your Stripe account ID, never OAuth access tokens.',
+              d: 'Your access token is used once then discarded. We persist only your account ID and the verified numbers.',
             },
             {
               i: 'bolt',
               t: 'Refreshed monthly',
-              d: 'Your certificate refreshes every billing cycle so data stays credible.',
+              d: 'Each billing cycle you reconnect Stripe in one click — we fetch, then immediately discard the token.',
             },
           ].map((b) => (
             <div key={b.i} className="flex gap-3.5">

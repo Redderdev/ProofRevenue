@@ -220,7 +220,7 @@ export default async function PublicCertificatePage({
         <div className="flex items-center gap-2.5 py-3 px-4 bg-white border border-line rounded-xl mb-6 overflow-hidden">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald flex-shrink-0" />
           <span className="font-mono text-xs text-ink-600 truncate">
-            Verified {fmtDatetime(verifiedAt)} · refreshes monthly
+            Verified {fmtDatetime(verifiedAt)} · refreshed each billing cycle
           </span>
         </div>
 
@@ -254,8 +254,8 @@ export default async function PublicCertificatePage({
             ProofRevenue reads revenue data directly from Stripe using read-only OAuth access to
             account{' '}
             <span className="font-mono text-ink-900">{shortAccountId}</span>.
-            Figures are snapshotted at purchase and refreshed each billing cycle. This URL is stable
-            and re-renders from live database state on every request — it cannot be manually edited.
+            Figures are snapshotted at connection time. The access token is discarded immediately — we never store it.
+            This URL re-renders from the verified database snapshot on every request and cannot be manually edited.
           </p>
           {cert.account_country && (
             <div className="mt-3 pt-3 border-t border-line flex flex-wrap gap-4">

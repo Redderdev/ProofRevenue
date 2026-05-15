@@ -164,6 +164,7 @@ const DashboardBody: React.FC<{
   if (state === 'payment_abandoned') return <StatePaymentAbandoned onAction={onAction} />;
   if (state === 'data_pending') return <StateDataPending />;
   if (state === 'certificate_active') return <StateActive certificate={certificate} />;
+  if (state === 'certificate_refresh_needed') return <StateRefreshNeeded onAction={onAction} certificate={certificate} />;
   if (state === 'stripe_revoked_after_payment') return <StateRevokedPost />;
   return null;
 };
@@ -197,8 +198,8 @@ const StateUnconnected: React.FC<{ onAction?: (action: string) => void }> = ({ o
       <div>
         <h2 className="font-serif text-2xl letter-spacing-tight mb-2.5">Connect Stripe to begin</h2>
         <p className="text-sm text-ink-600 mb-5 max-w-lg leading-relaxed">
-          We use Stripe Connect to read your MRR, ARR and customer count. We never see or store
-          your access token — only your Stripe account ID.
+          We use Stripe Connect to read your MRR, ARR and customer count. Your access token is
+          used once then discarded — we never store it. Only your account ID and snapshot numbers are saved.
         </p>
         <Button variant="primary" onClick={() => onAction?.('connect')}>
           <Icon name="stripe-s" size={14} color="white" />
@@ -339,7 +340,7 @@ const StateConnected: React.FC<{ onAction?: (action: string) => void }> = ({ onA
           <div>
             <h2 className="font-serif text-2xl letter-spacing-tight mb-2">Ready to verify</h2>
             <p className="text-sm text-ink-600 mb-5 leading-relaxed">
-              Your certificate is issued within seconds and refreshed every month so your numbers stay credible.
+              Your certificate is issued within seconds. Each month when your subscription renews, you reconnect Stripe to refresh the numbers — takes 5 seconds.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <Button variant="primary" size="lg" onClick={() => onAction?.('pay')}>
@@ -598,6 +599,67 @@ const StateActive: React.FC<{ certificate?: CertificateData | null }> = ({ certi
   );
 };
 
+const StateRefreshNeeded: React.FC<{
+  onAction?: (action: string) => void;
+  certificate?: CertificateData | null;
+}> = ({ onAction, certificate }) => {
+  const fmtEur = (cents: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100);
+
+  const verifiedLabel = certificate?.verifiedAt
+    ? new Date(certificate.verifiedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* Refresh banner */}
+      <Card className="overflow-hidden">
+        <div className="px-6 py-4 bg-amber-soft border-b border-line flex items-center gap-3">
+          <Icon name="refresh" size={16} color="oklch(0.45 0.13 75)" />
+          <div className="text-sm text-amber-900 font-medium">
+            Monthly renewal detected — reconnect Stripe to refresh your certificate data.
+          </div>
+        </div>
+        <div className="p-6 sm:p-8">
+          <h2 className="font-serif text-2xl tracking-tight mb-2">Time to refresh your data</h2>
+          <p className="text-sm text-ink-600 mb-6 max-w-lg leading-relaxed">
+            Your ProofRevenue subscription renewed. To keep your certificate current,
+            reconnect Stripe so we can pull the latest MRR snapshot. This takes about 5 seconds.
+            Your access token is discarded immediately after — we never store it.
+          </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <Button variant="primary" onClick={() => onAction?.('connect')}>
+              <Icon name="stripe-s" size={14} color="white" />
+              Reconnect Stripe to refresh
+            </Button>
+            <span className="font-mono text-xs text-ink-400">Your public link stays active in the meantime</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Stale snapshot (still visible so the link keeps working) */}
+      {certificate?.mrr != null && (
+        <Card className="overflow-hidden opacity-60">
+          <div className="p-4 sm:p-5 border-b border-line">
+            <p className="font-mono text-xs tracking-wide text-ink-400 uppercase">
+              Last verified snapshot · {verifiedLabel} · awaiting refresh
+            </p>
+          </div>
+          <div className="hidden md:flex">
+            <Metric label="MRR" value={fmtEur(certificate.mrr!)} sub="Last verified value" />
+            <Metric label="ARR" value={certificate.arr != null ? fmtEur(certificate.arr) : '—'} sub="MRR × 12" />
+            <Metric
+              label="Customers"
+              value={certificate.customers != null ? new Intl.NumberFormat('en-US').format(certificate.customers) : '—'}
+              sub="As of last verification"
+            />
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 const StateRevokedPost: React.FC = () => (
   <Card className="p-5 sm:p-7 mb-8">
     <div className="text-center">
@@ -618,6 +680,7 @@ const OnboardingStepper: React.FC<{ state: string }> = ({ state }) => {
     payment_pending: 2,
     data_pending: 3,
     certificate_active: 4,
+    certificate_refresh_needed: 4,
     stripe_revoked_after_payment: 4,
   };
 

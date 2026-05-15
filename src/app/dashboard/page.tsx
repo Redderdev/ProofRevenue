@@ -15,6 +15,7 @@ type DashboardState =
   | 'payment_abandoned'
   | 'data_pending'
   | 'certificate_active'
+  | 'certificate_refresh_needed'
   | 'stripe_revoked_after_payment';
 
 function certRowToState(cert: {
@@ -25,6 +26,7 @@ function certRowToState(cert: {
   if (!cert) return null;
   if (cert.status === 'draft') return 'payment_pending';
   if (cert.status === 'active' && cert.data_status === 'verified') return 'certificate_active';
+  if (cert.status === 'active' && cert.data_status === 'refresh_needed') return 'certificate_refresh_needed';
   if (cert.status === 'active') return 'data_pending';
   return null;
 }

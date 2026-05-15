@@ -1,53 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { getStripeServerClient } from '@/lib/stripe';
-import { fetchAndCacheMetrics } from '@/lib/stripe-api';
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
   throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
 }
 
-async function snapshotCertificate(
+/**
+ * Snapshot a certificate using already-stored metrics from stripe_connections.
+ * No Stripe API call — the token was discarded after the OAuth connect.
+ */
+async function snapshotCertificateFromStored(
   client: any,
   certificateId: string,
   userId: string
 ): Promise<void> {
   const now = new Date();
-  const nextRefresh = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  const nextRefresh = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const metrics = await fetchAndCacheMetrics(userId);
+  const metricsResult = await client.query(
+    `SELECT mrr, arr, active_customers FROM stripe_connections
+     WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId]
+  );
 
   const historyResult = await client.query(
     `SELECT mrr FROM revenue_snapshots
      WHERE user_id = $1 ORDER BY snapshot_date ASC LIMIT 12`,
     [userId]
   );
-  const mrrHistory = historyResult.rows.map((r: any) => r.mrr);
-  if (metrics) mrrHistory.push(metrics.mrr);
 
-  if (metrics) {
+  if (metricsResult.rows.length > 0 && metricsResult.rows[0].mrr !== null) {
+    const m = metricsResult.rows[0];
+    const mrrHistory = historyResult.rows.map((r: any) => r.mrr);
+    mrrHistory.push(m.mrr);
+
     await client.query(
       `UPDATE certificates
        SET status = 'active',
            data_status = 'verified',
            is_active = true,
-           mrr = $1, arr = $2, customers = $3, total_revenue = $4,
-           mrr_history = $5,
-           issued_at = COALESCE(issued_at, $6),
-           verified_at = $6,
-           last_snapshot_at = $6,
-           next_refresh_at = $7,
-           updated_at = $6
-       WHERE id = $8`,
-      [
-        metrics.mrr, metrics.arr, metrics.activeCustomers, metrics.totalRevenue,
-        JSON.stringify(mrrHistory),
-        now, nextRefresh, certificateId,
-      ]
+           mrr = $1, arr = $2, customers = $3,
+           mrr_history = $4,
+           issued_at = COALESCE(issued_at, $5),
+           verified_at = $5,
+           last_snapshot_at = $5,
+           next_refresh_at = $6,
+           updated_at = $5
+       WHERE id = $7`,
+      [m.mrr, m.arr, m.active_customers, JSON.stringify(mrrHistory), now, nextRefresh, certificateId]
     );
-    console.log(`[Webhook] Snapshotted metrics for certificate ${certificateId}`);
+    console.log(`[Webhook] Certificate ${certificateId} activated with stored metrics`);
   } else {
+    // Metrics not yet stored (edge case: user paid before OAuth fetch completed)
     await client.query(
       `UPDATE certificates
        SET status = 'active', data_status = 'pending', is_active = true,
@@ -55,11 +61,10 @@ async function snapshotCertificate(
        WHERE id = $2`,
       [now, certificateId]
     );
-    console.warn(`[Webhook] Certificate ${certificateId} activated but metrics unavailable`);
+    console.warn(`[Webhook] Certificate ${certificateId} activated but no stored metrics found`);
   }
 }
 
-// POST /api/stripe/webhook
 export async function POST(request: NextRequest) {
   try {
     const stripe = getStripeServerClient();
@@ -74,9 +79,7 @@ export async function POST(request: NextRequest) {
     const client = await pool.connect();
 
     try {
-      // Atomic idempotency claim — insert with processed=false before any work.
-      // ON CONFLICT DO NOTHING returns 0 rows if the event was already claimed,
-      // meaning a previous invocation already processed (or is processing) it.
+      // Atomic idempotency claim
       const claimed = await client.query(
         `INSERT INTO stripe_events (id, type, data, processed)
          VALUES ($1, $2, $3, false)
@@ -90,10 +93,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // We claimed the event — now process it
       switch (event.type) {
 
-        // ── Checkout completed → activate certificate ──────────────────────
+        // ── Checkout completed → activate certificate with stored metrics ──
         case 'checkout.session.completed': {
           const session = event.data.object as any;
           const certificateId = session.metadata?.certificateId;
@@ -104,7 +106,6 @@ export async function POST(request: NextRequest) {
             break;
           }
 
-          // Ownership check — never trust metadata alone
           const ownerCheck = await client.query(
             `SELECT user_id FROM certificates WHERE id = $1`,
             [certificateId]
@@ -114,7 +115,6 @@ export async function POST(request: NextRequest) {
             break;
           }
 
-          // Store Stripe customer + subscription IDs for lifecycle management
           const customerId = session.customer as string | null;
           const subscriptionId = session.subscription as string | null;
           if (customerId || subscriptionId) {
@@ -128,10 +128,9 @@ export async function POST(request: NextRequest) {
           }
 
           try {
-            await snapshotCertificate(client, certificateId, userId);
+            await snapshotCertificateFromStored(client, certificateId, userId);
           } catch (err) {
-            console.error('[Webhook] Failed to snapshot metrics:', err);
-            // Still activate so user isn't blocked
+            console.error('[Webhook] Failed to snapshot certificate:', err);
             const now = new Date();
             await client.query(
               `UPDATE certificates
@@ -150,31 +149,31 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // ── Monthly renewal → refresh certificate data ─────────────────────
+        // ── Monthly renewal → mark certificate as due for refresh ──────────
+        // The user must manually reconnect Stripe to pull fresh metrics.
+        // No access token is stored, so we cannot call Stripe automatically.
         case 'invoice.paid': {
           const invoice = event.data.object as any;
           const subscriptionId = invoice.subscription as string | null;
-
           if (!subscriptionId) break;
 
-          // Only refresh already-active certificates (skip the first invoice,
-          // which checkout.session.completed already handled)
+          // Only mark already-active certs (skip the first invoice, handled by checkout.session.completed)
           const certResult = await client.query(
             `SELECT id, user_id FROM certificates
-             WHERE stripe_subscription_id = $1 AND is_active = true AND status = 'active'`,
+             WHERE stripe_subscription_id = $1 AND is_active = true AND status = 'active'
+               AND data_status = 'verified'`,
             [subscriptionId]
           );
-
           if (certResult.rows.length === 0) break;
 
           const { id: certId, user_id: certUserId } = certResult.rows[0];
-          console.log(`[Webhook] invoice.paid — refreshing certificate ${certId}`);
-
-          try {
-            await snapshotCertificate(client, certId, certUserId);
-          } catch (err) {
-            console.error('[Webhook] Renewal refresh failed:', err);
-          }
+          await client.query(
+            `UPDATE certificates
+             SET data_status = 'refresh_needed', updated_at = NOW()
+             WHERE id = $1`,
+            [certId]
+          );
+          console.log(`[Webhook] invoice.paid — certificate ${certId} (user ${certUserId}) marked refresh_needed`);
           break;
         }
 
@@ -182,7 +181,6 @@ export async function POST(request: NextRequest) {
         case 'customer.subscription.deleted': {
           const subscription = event.data.object as any;
           const certId = subscription.metadata?.certificateId;
-
           if (certId) {
             await client.query(
               `UPDATE certificates
@@ -195,16 +193,14 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // ── Subscription updated (e.g. past_due) ──────────────────────────
+        // ── Subscription past_due / unpaid ────────────────────────────────
         case 'customer.subscription.updated': {
           const subscription = event.data.object as any;
           const certId = subscription.metadata?.certificateId;
           const status = subscription.status;
-
           if (certId && (status === 'past_due' || status === 'unpaid')) {
             await client.query(
-              `UPDATE certificates SET data_status = 'payment_failed', updated_at = NOW()
-               WHERE id = $1`,
+              `UPDATE certificates SET data_status = 'payment_failed', updated_at = NOW() WHERE id = $1`,
               [certId]
             );
             console.warn(`[Webhook] Certificate ${certId} payment issue — status: ${status}`);
@@ -212,11 +208,9 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // ── Stripe account deauthorized (user revoked OAuth) ──────────────
+        // ── Stripe account deauthorized ───────────────────────────────────
         case 'account.application.deauthorized': {
           const account = event.data.object as any;
-          console.log(`[Webhook] account.application.deauthorized: ${account.id}`);
-
           await client.query(
             `UPDATE stripe_connections
              SET revoked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -229,6 +223,7 @@ export async function POST(request: NextRequest) {
              WHERE stripe_account_id = $1`,
             [account.id]
           );
+          console.log(`[Webhook] account.application.deauthorized: ${account.id}`);
           break;
         }
 
@@ -246,13 +241,9 @@ export async function POST(request: NextRequest) {
           console.log(`[Webhook] Unhandled event type: ${event.type}`);
       }
 
-      // Mark the claimed event as fully processed
-      await client.query(
-        `UPDATE stripe_events SET processed = true WHERE id = $1`,
-        [event.id]
-      );
-
+      await client.query(`UPDATE stripe_events SET processed = true WHERE id = $1`, [event.id]);
       return NextResponse.json({ received: true });
+
     } finally {
       client.release();
     }

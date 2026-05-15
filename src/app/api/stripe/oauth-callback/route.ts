@@ -1,20 +1,23 @@
 /**
  * Stripe OAuth Callback Handler
- * 
+ *
  * GET /api/stripe/oauth-callback?code=...&state=...
- * 
- * Handles the OAuth callback from Stripe. This endpoint:
- * 1. Validates the state parameter (CSRF protection)
- * 2. Exchanges the authorization code for access tokens
- * 3. Encrypts tokens before storage in database
- * 4. Saves connection info with encrypted tokens
- * 5. Redirects to frontend callback page with session info
+ *
+ * Security model: connect-fetch-disconnect.
+ * 1. Validate CSRF state
+ * 2. Exchange code for token (in memory only)
+ * 3. Fetch account info + revenue metrics using token
+ * 4. Immediately deauthorize on Stripe — token is now dead everywhere
+ * 5. Store ONLY: account info + metrics snapshot. No token ever written to DB.
+ * 6. If user has an active certificate awaiting refresh, update it now.
  */
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/auth-helpers-nextjs';
-import { validateOAuthState, exchangeOAuthCode, encryptToken, logOAuthEvent } from '@/lib/stripe-oauth';
+import { validateOAuthState, exchangeOAuthCode, logOAuthEvent } from '@/lib/stripe-oauth';
+import { fetchMetricsWithToken, storeConnectionMetrics } from '@/lib/stripe-api';
+import { getStripeServerClient } from '@/lib/stripe';
 import Stripe from 'stripe';
 import pool from '@/lib/db';
 
@@ -42,7 +45,6 @@ export async function GET(request: NextRequest) {
   );
 
   const { data, error: authError } = await supabase.auth.getUser();
-
   if (authError || !data.user) {
     console.warn('[OAuth Callback] Missing Supabase session');
     return NextResponse.redirect(
@@ -57,10 +59,7 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect();
     try {
       await client.query(
-        `UPDATE users
-         SET stripe_connect_failed_at = CURRENT_TIMESTAMP,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1`,
+        `UPDATE users SET stripe_connect_failed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [userId]
       );
     } finally {
@@ -68,218 +67,163 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  // Handle user denial
+  const redirectDashboard = (state: string) => {
+    const url = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
+    url.searchParams.set('state', state);
+    return NextResponse.redirect(url, { status: 302 });
+  };
+
   if (error) {
-    console.warn('[OAuth Callback] User denied:', {
-      error,
-      error_description: errorDescription,
-      userId,
-    });
-
-    await logOAuthEvent('authorize_denied', userId, {
-      error,
-      error_description: errorDescription,
-      success: false,
-    });
-
+    console.warn('[OAuth Callback] User denied:', { error, error_description: errorDescription, userId });
+    await logOAuthEvent('authorize_denied', userId, { error, error_description: errorDescription, success: false });
     await markStripeFailed();
-
-    const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-    redirectUrl.searchParams.set('state', 'stripe_denied');
-    return NextResponse.redirect(redirectUrl, { status: 302 });
+    return redirectDashboard('stripe_denied');
   }
 
-  // Validate required parameters
   if (!code || !state) {
-    console.error('[OAuth Callback] Missing code or state', {
-      hasCode: !!code,
-      hasState: !!state,
-    });
-
-    await logOAuthEvent('authorize_error', userId, {
-      reason: 'missing_parameters',
-      success: false,
-    });
-
+    console.error('[OAuth Callback] Missing code or state');
     await markStripeFailed();
-
-    const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-    redirectUrl.searchParams.set('state', 'stripe_error');
-    return NextResponse.redirect(redirectUrl, { status: 302 });
+    return redirectDashboard('stripe_error');
   }
 
-  // Validate state parameter (CSRF protection)
   if (!validateOAuthState(state, userId)) {
-    console.error('[OAuth Callback] Invalid state parameter', {
-      userId,
-      state: state.substring(0, 8) + '...',
-    });
-
-    await logOAuthEvent('authorize_csrf', userId, {
-      reason: 'state_validation_failed',
-      success: false,
-    });
-
+    console.error('[OAuth Callback] Invalid state parameter (CSRF check failed)');
     await markStripeFailed();
-
-    const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-    redirectUrl.searchParams.set('state', 'stripe_error');
-    return NextResponse.redirect(redirectUrl, { status: 302 });
+    return redirectDashboard('stripe_error');
   }
 
   const client = await pool.connect();
 
   try {
-    // Exchange code for tokens
+    // 1. Exchange code → access token (stays in memory, never written to DB)
     let tokenResponse;
     try {
       tokenResponse = await exchangeOAuthCode(code);
-    } catch (error) {
-      console.error('[OAuth Callback] Token exchange failed:', error);
-
-      await logOAuthEvent('token_exchange_error', userId, {
-        error: String(error),
-        success: false,
-      });
-
+    } catch (err) {
+      console.error('[OAuth Callback] Token exchange failed:', err);
       await markStripeFailed();
-
-      const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-      redirectUrl.searchParams.set('state', 'stripe_error');
-      return NextResponse.redirect(redirectUrl, { status: 302 });
+      return redirectDashboard('stripe_error');
     }
 
-    // Encrypt tokens for storage
-    const { encryptedData: accessTokenEncrypted, iv: accessTokenIv } = encryptToken(
-      tokenResponse.access_token
-    );
+    const { access_token, stripe_user_id, livemode, scope } = tokenResponse;
 
-    const refreshTokenData = tokenResponse.refresh_token
-      ? encryptToken(tokenResponse.refresh_token)
-      : null;
+    // 2. Fetch account info using the in-memory token
+    const connectedStripe = new Stripe(access_token, { apiVersion: '2023-10-16' });
+    let accountName: string | null = null;
+    let accountUrl: string | null = null;
+    let accountCountry: string | null = null;
+    try {
+      const account = await connectedStripe.accounts.retrieve();
+      accountName = account.business_profile?.name || account.settings?.dashboard?.display_name || null;
+      accountUrl = account.business_profile?.url || null;
+      accountCountry = account.country || null;
+    } catch (err) {
+      console.warn('[OAuth Callback] Failed to fetch account info:', err);
+    }
 
-    const stripeClient = new Stripe(tokenResponse.access_token, {
-      apiVersion: '2023-10-16',
-    });
-    const account = await stripeClient.accounts.retrieve();
-    const accountName = account.business_profile?.name || account.settings?.dashboard?.display_name || null;
-    const accountUrl = account.business_profile?.url || null;
-    const accountCountry = account.country || null;
+    // 3. Fetch revenue metrics using the in-memory token
+    const metrics = await fetchMetricsWithToken(access_token);
 
-    // Save to database (or update if already connected)
+    // 4. Deauthorize on Stripe immediately — token is now dead everywhere
+    try {
+      const platformStripe = getStripeServerClient();
+      await (platformStripe as any).oauth.deauthorize({
+        client_id: process.env.STRIPE_OAUTH_CLIENT_ID,
+        stripe_user_id,
+      });
+      console.log(`[OAuth Callback] Deauthorized stripe_user_id=${stripe_user_id} — token discarded`);
+    } catch (err: any) {
+      // Already deauthorized is fine — just log and continue
+      if (!err?.message?.includes('No such application')) {
+        console.warn('[OAuth Callback] Deauthorize warning:', err?.message);
+      }
+    }
+
+    // 5. Save connection WITHOUT any token fields
     await client.query('BEGIN');
 
-    // Check if already connected
-    const existingConnection = await client.query(
+    const existing = await client.query(
       'SELECT id FROM stripe_connections WHERE user_id = $1',
       [userId]
     );
 
-    if (existingConnection.rows.length > 0) {
-      // Update existing connection
+    if (existing.rows.length > 0) {
       await client.query(
-        `UPDATE stripe_connections 
-         SET access_token_encrypted = $2,
-             access_token_iv = $3,
-             refresh_token_encrypted = $4,
-             refresh_token_iv = $5,
-             livemode = $6,
-             scope = $7,
-             account_name = $8,
-             account_url = $9,
-             account_country = $10,
+        `UPDATE stripe_connections
+         SET access_token_encrypted = NULL,
+             access_token_iv = NULL,
+             refresh_token_encrypted = NULL,
+             refresh_token_iv = NULL,
+             livemode = $2,
+             scope = $3,
+             account_name = $4,
+             account_url = $5,
+             account_country = $6,
              connected_at = CURRENT_TIMESTAMP,
              revoked_at = NULL,
              last_metrics_fetch = NULL,
              updated_at = CURRENT_TIMESTAMP
          WHERE user_id = $1`,
-        [
-          userId,
-          Buffer.from(accessTokenEncrypted, 'utf8'),
-          accessTokenIv,
-          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'utf8') : null,
-          refreshTokenData ? refreshTokenData.iv : null,
-          tokenResponse.livemode,
-          tokenResponse.scope,
-          accountName,
-          accountUrl,
-          accountCountry,
-        ]
+        [userId, livemode, scope, accountName, accountUrl, accountCountry]
       );
     } else {
-      // Insert new connection
       await client.query(
-        `INSERT INTO stripe_connections (
-          user_id,
-          stripe_user_id,
-          access_token_encrypted,
-          access_token_iv,
-          refresh_token_encrypted,
-          refresh_token_iv,
-          livemode,
-          scope,
-          account_name,
-          account_url,
-          account_country,
-          connected_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)`,
-        [
-          userId,
-          tokenResponse.stripe_user_id,
-          Buffer.from(accessTokenEncrypted, 'utf8'),
-          accessTokenIv,
-          refreshTokenData ? Buffer.from(refreshTokenData.encryptedData, 'utf8') : null,
-          refreshTokenData ? refreshTokenData.iv : null,
-          tokenResponse.livemode,
-          tokenResponse.scope,
-          accountName,
-          accountUrl,
-          accountCountry,
-        ]
+        `INSERT INTO stripe_connections
+           (user_id, stripe_user_id, livemode, scope, account_name, account_url, account_country, connected_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+        [userId, stripe_user_id, livemode, scope, accountName, accountUrl, accountCountry]
       );
     }
 
-    // Update user's stripe connection info
     await client.query(
-      `UPDATE users 
-       SET stripe_account_id = $2,
-           livemode = $3,
-           connected_at = CURRENT_TIMESTAMP,
-           stripe_connect_failed_at = NULL,
-           updated_at = CURRENT_TIMESTAMP
+      `UPDATE users
+       SET stripe_account_id = $2, livemode = $3, connected_at = CURRENT_TIMESTAMP,
+           stripe_connect_failed_at = NULL, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
-      [userId, tokenResponse.stripe_user_id, tokenResponse.livemode]
+      [userId, stripe_user_id, livemode]
     );
+
+    // 6. If an active certificate is awaiting refresh, update it with new metrics
+    if (metrics) {
+      const refreshResult = await client.query(
+        `UPDATE certificates
+         SET mrr = $2, arr = $3, customers = $4,
+             data_status = 'verified',
+             verified_at = NOW(),
+             last_snapshot_at = NOW(),
+             next_refresh_at = NOW() + INTERVAL '30 days',
+             updated_at = NOW()
+         WHERE user_id = $1 AND status = 'active' AND data_status = 'refresh_needed'
+         RETURNING id`,
+        [userId, metrics.mrr, metrics.arr, metrics.activeCustomers]
+      );
+      if (refreshResult.rows.length > 0) {
+        console.log(`[OAuth Callback] Certificate ${refreshResult.rows[0].id} refreshed with new metrics`);
+      }
+    }
 
     await client.query('COMMIT');
 
-    // Log successful connection
-    await logOAuthEvent('authorize_success', userId, {
-      stripe_user_id: tokenResponse.stripe_user_id,
-      livemode: tokenResponse.livemode,
-      success: true,
-    });
+    // 7. Store metrics snapshot in stripe_connections + revenue_snapshots
+    if (metrics) {
+      await storeConnectionMetrics(userId, metrics);
+    } else {
+      console.warn(`[OAuth Callback] Metrics unavailable for user ${userId} — cert data may be pending`);
+    }
 
-    // Redirect to callback page which will fetch metrics
+    await logOAuthEvent('authorize_success', userId, { stripe_user_id, livemode, token_stored: false });
+
+    // Redirect to the callback page (shows "Connected!" then goes to dashboard)
     const redirectUrl = new URL('/connect/stripe/callback', process.env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set('success', 'true');
-    redirectUrl.searchParams.set('livemode', tokenResponse.livemode ? 'true' : 'false');
-
+    redirectUrl.searchParams.set('livemode', livemode ? 'true' : 'false');
     return NextResponse.redirect(redirectUrl, { status: 302 });
-  } catch (error) {
+
+  } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('[OAuth Callback] Database error:', error);
-
-    await logOAuthEvent('database_error', userId, {
-      error: String(error),
-      success: false,
-    });
-
+    console.error('[OAuth Callback] Unexpected error:', err);
     await markStripeFailed();
-
-    const redirectUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-    redirectUrl.searchParams.set('state', 'stripe_error');
-    return NextResponse.redirect(redirectUrl, { status: 302 });
+    return redirectDashboard('stripe_error');
   } finally {
     client.release();
   }
