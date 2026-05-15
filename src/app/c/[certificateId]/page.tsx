@@ -246,7 +246,7 @@ export default async function PublicCertificatePage({
             Why you can trust this
           </div>
           <p className="text-sm text-ink-600 leading-relaxed">
-            These figures come directly from Stripe — not entered by the business.
+            These figures come directly from Stripe not entered by the business.
             ProofRevenue connected to their live Stripe account via official OAuth, read the subscription
             data at source, and sealed it here. The numbers on this page cannot be manually changed
             or edited. Only a fresh Stripe connection can produce a new snapshot.
