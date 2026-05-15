@@ -33,7 +33,7 @@ export async function GET() {
 
     try {
       const result = await client.query(
-        `SELECT id, status, data_status, is_active, issued_at, verified_at, mrr, arr, customers
+        `SELECT id, status, data_status, is_active, issued_at, verified_at, mrr, arr, customers, view_count
          FROM certificates
          WHERE user_id = $1 AND status != 'cancelled'
          ORDER BY created_at DESC

@@ -101,6 +101,10 @@ export default async function PublicCertificatePage({
     );
     if (result.rows.length === 0) notFound();
     cert = result.rows[0];
+    await client.query(
+      `UPDATE certificates SET view_count = view_count + 1 WHERE id = $1`,
+      [certificateId]
+    );
   } finally {
     client.release();
   }

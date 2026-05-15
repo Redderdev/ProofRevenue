@@ -22,6 +22,7 @@ interface CertData {
   mrr: number | null;
   arr: number | null;
   customers: number | null;
+  view_count: number;
 }
 
 interface ConnData {
@@ -337,6 +338,10 @@ export const CertificatePage: React.FC<CertificatePageProps> = ({ onNav }) => {
             Certificate details
           </div>
           <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-600">Certificate views</span>
+              <span className="font-mono text-xs">{num(cert.view_count ?? 0)}</span>
+            </div>
             <div className="flex justify-between text-sm">
               <span className="text-ink-600">Certificate ID</span>
               <span className="font-mono text-xs">{cert.id}</span>
