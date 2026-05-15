@@ -499,8 +499,8 @@ const StateActive: React.FC<{
   const verifiedLabel = certificate?.verifiedAt
     ? new Date(certificate.verifiedAt).toLocaleString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false,
-      }) + ' UTC'
+        hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short',
+      })
     : certificate?.issuedAt
       ? new Date(certificate.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '—';
