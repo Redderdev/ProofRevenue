@@ -3,9 +3,12 @@ User-agent: *
 # Certificate pages contain private business revenue data — do not index
 Disallow: /c/
 
-# Authenticated app pages
+# Authenticated app pages and internal APIs
 Disallow: /dashboard/
 Disallow: /api/
-Disallow: /auth/
+Disallow: /connect/
+Disallow: /checkout/
 
 Allow: /
+
+Sitemap: https://proof-revenue.vercel.app/sitemap.xml
