@@ -119,11 +119,6 @@ export default async function PublicCertificatePage({
 
   const mrrHistory: number[] = Array.isArray(cert.mrr_history) ? cert.mrr_history : [];
   const isRevoked = !cert.is_active;
-  const shortAccountId =
-    cert.stripe_user_id?.length > 12
-      ? `${cert.stripe_user_id.slice(0, 8)}···${cert.stripe_user_id.slice(-4)}`
-      : cert.stripe_user_id;
-
   const verifiedAt = cert.verified_at || cert.issued_at;
   const twitterText = encodeURIComponent(
     `Our revenue is independently verified — check the certificate:`
@@ -252,8 +247,7 @@ export default async function PublicCertificatePage({
           </div>
           <p className="text-sm text-ink-600 leading-relaxed">
             ProofRevenue reads revenue data directly from Stripe using read-only OAuth access to
-            account{' '}
-            <span className="font-mono text-ink-900">{shortAccountId}</span>.
+            a verified Stripe account.
             Figures are snapshotted at connection time. The access token is discarded immediately — we never store it.
             This URL re-renders from the verified database snapshot on every request and cannot be manually edited.
           </p>
