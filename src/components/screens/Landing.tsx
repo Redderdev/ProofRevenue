@@ -245,7 +245,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
                   {[
                     'MRR, ARR & customer count',
                     'Shareable public certificate link',
-                    'Monthly auto-refresh',
+                    'Refresh anytime with one click',
                     'Stripe-verified badge',
                     'Read-only Stripe OAuth',
                     'Live mode only — real data only',
@@ -284,8 +284,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
                   },
                   {
                     icon: 'bolt',
-                    t: 'Automatically current',
-                    d: 'Your certificate refreshes each billing cycle. No manual re-verification needed.',
+                    t: 'Refresh in one click',
+                    d: 'Reconnect Stripe once per billing cycle to update your snapshot. Takes under 10 seconds.',
                   },
                 ].map((b) => (
                   <div key={b.t} className="flex gap-4">
@@ -326,7 +326,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
               },
               {
                 q: 'Is my Stripe data safe?',
-                a: 'Yes. We use Stripe Connect with read-only permissions — we can only read data, never initiate charges or make changes. We never store your Stripe access token. Only your Stripe account ID is persisted so we can fetch updated data at the next billing cycle.',
+                a: 'Yes. We use Stripe Connect with read-only permissions — we can only read data, never initiate charges or make changes. Your access token is used for a single fetch and then immediately discarded. We never store it. Only your verified revenue snapshot is saved — no credentials, no ongoing access.',
               },
               {
                 q: 'What counts as MRR?',
@@ -341,8 +341,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
                 a: 'No — ProofRevenue is live mode only. This is intentional. Test data is not real revenue, and the whole point is that investors and buyers can trust the numbers.',
               },
               {
-                q: 'What if I disconnect Stripe later?',
-                a: 'Your certificate will be marked as pending re-verification. The public link stays live but shows that data cannot be refreshed until Stripe access is restored.',
+                q: 'How do I update my certificate with fresh numbers?',
+                a: 'Click "Refresh data" in your dashboard and reconnect Stripe. We fetch the latest snapshot, discard the token immediately, and your certificate updates. You can do this anytime — we recommend once per billing cycle.',
               },
             ].map((item, i) => (
               <div key={i}>
