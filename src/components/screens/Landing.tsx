@@ -354,7 +354,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
             className="bg-paper text-ink-900 hover:bg-gray-100 mx-auto"
           >
             Get verified — €9/mo
-            <Icon name="arrow-right" size={16} color="#0B1220" />
+            <Icon name="arrow-right" size={16} color="#f8f6f6" />
           </Button>
           <p className="mt-4 font-mono text-xs text-ink-400">Cancel anytime · No long-term commitment</p>
         </div>
