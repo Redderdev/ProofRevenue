@@ -181,7 +181,7 @@ export default function DashboardSettingsPage() {
             <p className="text-xs text-ink-400 pt-2 border-t border-line">
               We never create charges, issue refunds, or modify anything in your Stripe account.
               The OAuth access token is discarded immediately after the snapshot — we hold no ongoing
-              connection to Stripe. Your revenue figures are stored only in ProofRevenue's database
+              connection to Stripe. Your revenue figures are stored only in ProofRevenue&apos;s database
               and can be removed at any time using the button above.
             </p>
           </div>
