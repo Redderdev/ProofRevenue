@@ -38,6 +38,9 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onSignIn }) => {
           {isAuthenticated && user ? (
             <>
               <span className="hidden sm:block text-sm text-ink-600 font-medium">{user.email}</span>
+              <a href="/dashboard">
+                <Button variant="primary" size="sm">Dashboard</Button>
+              </a>
               <Button variant="ghost" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
                 {isLoggingOut ? 'Signing out...' : 'Sign out'}
               </Button>
